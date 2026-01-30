@@ -8,45 +8,57 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import TerminalModal from './TerminalModal';
-
-const initialNodes = [
-    {
-        id: '1',
-        data: { label: 'Internet' },
-        position: { x: 250, y: 5 },
-        style: { background: '#6ede87', color: '#333' },
-    },
-    {
-        id: '2',
-        data: { label: 'Caddy Proxy (Portainer)' },
-        position: { x: 100, y: 100 },
-    },
-    {
-        id: '3',
-        data: { label: 'Network Manager (App)' },
-        position: { x: 400, y: 100 },
-    },
-];
-
-const initialEdges = [
-    { id: 'e1-2', source: '1', target: '2', animated: true },
-    { id: 'e1-3', source: '1', target: '3', animated: true },
-];
+import ContextMenu from './ContextMenu';
+import AssetDetails from './AssetDetails';
 
 const nodeTypes = {};
 
 function TopologyMap() {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-    const [selectedNode, setSelectedNode] = useState(null);
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+    // State for interactions
+    const [terminalNode, setTerminalNode] = useState(null);
+    const [detailsNode, setDetailsNode] = useState(null);
+    const [menu, setMenu] = useState(null);
+
+    // Fetch Topology Data
+    useEffect(() => {
+        fetch('/api/topology')
+            .then(res => res.json())
+            .then(data => {
+                setNodes(data.nodes);
+                setEdges(data.edges);
+            })
+            .catch(err => console.error("Failed to fetch topology:", err));
+    }, [setNodes, setEdges]);
+
 
     const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
-    const onNodeClick = useCallback((event, node) => {
-        setSelectedNode(node);
+    const onNodeContextMenu = useCallback((event, node) => {
+        event.preventDefault(); // Prevent native browser menu
+        setMenu({
+            x: event.clientX,
+            y: event.clientY,
+            node: node,
+        });
     }, []);
 
-    const closeTerminal = () => setSelectedNode(null);
+    const onPaneClick = useCallback(() => setMenu(null), []);
+
+    const handleMenuAction = (action) => {
+        if (!menu) return;
+        if (action === 'terminal') {
+            setTerminalNode(menu.node);
+        } else if (action === 'details') {
+            setDetailsNode(menu.node);
+        }
+    };
+
+    const closeTerminal = () => setTerminalNode(null);
+    const closeDetails = () => setDetailsNode(null);
+    const closeMenu = () => setMenu(null);
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -56,17 +68,37 @@ function TopologyMap() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                onNodeClick={onNodeClick}
+                onNodeContextMenu={onNodeContextMenu}
+                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 fitView
             >
                 <Background />
                 <Controls />
             </ReactFlow>
+
+            {menu && (
+                <ContextMenu
+                    x={menu.x}
+                    y={menu.y}
+                    onClose={closeMenu}
+                    options={[
+                        { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
+                        { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
+                    ]}
+                />
+            )}
+
             <TerminalModal
-                isOpen={!!selectedNode}
+                isOpen={!!terminalNode}
                 onClose={closeTerminal}
-                nodeLabel={selectedNode?.data?.label || 'Unknown'}
+                nodeLabel={terminalNode?.data?.label || 'Unknown'}
+            />
+
+            <AssetDetails
+                isOpen={!!detailsNode}
+                onClose={closeDetails}
+                node={detailsNode}
             />
         </div>
     );

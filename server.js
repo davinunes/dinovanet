@@ -15,6 +15,38 @@ const io = new Server(httpServer, {
     path: "/socket.io/"
 });
 
+app.use(express.json());
+
+// Mock Topology Data
+const topologyData = {
+    nodes: [
+        {
+            id: '1',
+            data: { label: 'Internet', type: 'cloud', ip: '8.8.8.8' },
+            position: { x: 250, y: 5 },
+            style: { background: '#6ede87', color: '#333' },
+        },
+        {
+            id: '2',
+            data: { label: 'Caddy Proxy (Portainer)', type: 'server', ip: '192.168.1.10', os: 'Linux' },
+            position: { x: 100, y: 100 },
+        },
+        {
+            id: '3',
+            data: { label: 'Network Manager (App)', type: 'server', ip: '192.168.1.20', os: 'Linux' },
+            position: { x: 400, y: 100 },
+        },
+    ],
+    edges: [
+        { id: 'e1-2', source: '1', target: '2', animated: true },
+        { id: 'e1-3', source: '1', target: '3', animated: true },
+    ]
+};
+
+app.get('/api/topology', (req, res) => {
+    res.json(topologyData);
+});
+
 const sessions = {};
 
 io.on("connection", (socket) => {
