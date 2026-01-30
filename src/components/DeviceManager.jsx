@@ -128,7 +128,7 @@ const DeviceManager = ({ isOpen, onClose, onDevicesChanged }) => {
                                 </thead>
                                 <tbody>
                                     {devices.map(device => {
-                                        const group = groups.find(g => g.id === device.groupId);
+                                        const group = (groups || []).find(g => g.id === device.groupId);
                                         return (
                                             <tr key={device.id} className="border-b border-gray-700 hover:bg-gray-750">
                                                 <td className="p-3 text-gray-400">{group?.name || '-'}</td>
