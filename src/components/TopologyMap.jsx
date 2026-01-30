@@ -34,7 +34,10 @@ function TopologyMap() {
         fetch('/api/topology')
             .then(res => res.json())
             .then(data => {
-                setNodes(data.nodes);
+                // Deduplicate nodes based on ID
+                const uniqueNodes = Array.from(new Map(data.nodes.map(n => [n.id, n])).values());
+                setNodes(uniqueNodes);
+
                 // Deduplicate edges based on ID to prevent React key errors
                 const uniqueEdges = Array.from(new Map(data.edges.map(e => [e.id, e])).values());
                 setEdges(uniqueEdges);

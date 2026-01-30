@@ -104,6 +104,15 @@ app.post('/api/connections', async (req, res) => {
     res.json({ success: true });
 });
 
+app.delete('/api/connections/:id', async (req, res) => {
+    let connections = await db.getConnections();
+    const idToDelete = req.params.id;
+    // Filter out the connection with the given ID
+    connections = connections.filter(c => c.id !== idToDelete);
+    await db.saveConnections(connections);
+    res.json({ success: true });
+});
+
 app.post('/api/nodes/position', async (req, res) => {
     // Optional: save node positions
     const { id, position } = req.body;
