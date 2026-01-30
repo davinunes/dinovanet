@@ -33,6 +33,8 @@ const initialEdges = [
     { id: 'e1-3', source: '1', target: '3', animated: true },
 ];
 
+const nodeTypes = {};
+
 function TopologyMap() {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -55,6 +57,7 @@ function TopologyMap() {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeClick={onNodeClick}
+                nodeTypes={nodeTypes}
                 fitView
             >
                 <Background />
