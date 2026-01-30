@@ -41,17 +41,13 @@ io.on("connection", (socket) => {
     });
 
     socket.on("term.input", (data) => {
-        // console.log("Input received:", data); // verbose
         const ptyProcess = sessions[socket.id];
         if (ptyProcess) {
             ptyProcess.write(data);
-        } else {
-            console.log("No PTY session found for socket", socket.id);
         }
     });
 
     socket.on("term.resize", ({ cols, rows }) => {
-        console.log("Resize received:", cols, rows);
         const ptyProcess = sessions[socket.id];
         if (ptyProcess) {
             ptyProcess.resize(cols, rows);

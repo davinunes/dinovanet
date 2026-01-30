@@ -35,37 +35,32 @@ function TerminalModal({ isOpen, onClose, nodeLabel }) {
         fitAddonRef.current = fitAddon;
 
         // Initialize server pty
-        console.log("Emitting term.init");
         socket.emit('term.init');
 
         // Handle data from server
         const handleData = (data) => {
-            // console.log("Received data:", data); // verbose
             term.write(data);
         };
         socket.on('term.data', handleData);
 
         // Handle input
         term.onData((data) => {
-            console.log("Sending input:", data);
             socket.emit('term.input', data);
         });
 
         // Handle resize
         const handleResize = () => {
             fitAddon.fit();
-            console.log("Resizing term:", term.cols, term.rows);
             socket.emit('term.resize', { cols: term.cols, rows: term.rows });
         };
 
         window.addEventListener('resize', handleResize);
 
         // Initial resize to sync server
-        setTimeout(handleResize, 100); // Small delay to ensure render
+        setTimeout(handleResize, 100);
 
         return () => {
             // Cleanup
-            console.log("Cleaning up terminal");
             term.dispose();
             socket.off('term.data', handleData);
             window.removeEventListener('resize', handleResize);
