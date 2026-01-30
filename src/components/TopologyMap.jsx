@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import { useMemo } from 'react';
 import ReactFlow, {
     Controls,
     Background,
@@ -13,9 +13,10 @@ import AssetDetails from './AssetDetails';
 
 import DeviceManager from './DeviceManager';
 
-const nodeTypes = {};
+
 
 function TopologyMap() {
+    const nodeTypes = useMemo(() => ({}), []);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
