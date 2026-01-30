@@ -15,6 +15,7 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
     const socketRef = useRef(null);
     const termRef = useRef(null);
     const fitAddonRef = useRef(null);
+    const [isMaximized, setIsMaximized] = useState(false);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -33,7 +34,9 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
                 background: '#1e1e1e',
-            }
+                selectionBackground: 'rgba(255, 255, 255, 0.3)'
+            },
+            allowProposedApi: true
         });
 
         const fitAddon = new FitAddon();
@@ -45,7 +48,15 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
         termRef.current = term;
         fitAddonRef.current = fitAddon;
 
-        // Initialize server pty
+        // Copy on selection
+        term.onSelectionChange(() => {
+            const selection = term.getSelection();
+            if (selection) {
+                navigator.clipboard.writeText(selection);
+            }
+        });
+
+        // Initialize server pty with device info
         socket.emit('term.init', { device });
 
         // Handle data from server
@@ -61,8 +72,13 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
 
         // Handle resize
         const handleResize = () => {
-            fitAddon.fit();
-            socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+            // Wait for transition if maximizing
+            setTimeout(() => {
+                fitAddon.fit();
+                if (term.cols && term.rows) {
+                    socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+                }
+            }, 50);
         };
 
         window.addEventListener('resize', handleResize);
@@ -78,24 +94,56 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
         };
     }, [isOpen]);
 
+    // Handle Maximized toggle resize
+    useEffect(() => {
+        if (!termRef.current || !fitAddonRef.current) return;
+        setTimeout(() => {
+            fitAddonRef.current.fit();
+            const term = termRef.current;
+            if (socketRef.current && term.cols && term.rows) {
+                socketRef.current.emit('term.resize', { cols: term.cols, rows: term.rows });
+            }
+        }, 100);
+    }, [isMaximized]);
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-gray-900 rounded-lg shadow-xl overflow-hidden w-3/4 h-3/4 flex flex-col border border-gray-700">
-                <div className="bg-gray-800 p-2 flex justify-between items-center px-4 border-b border-gray-700">
-                    <span className="text-white font-mono text-sm">Terminal - {nodeLabel}</span>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-white"
-                    >
-                        ✕
-                    </button>
+            <div className={`bg-gray-900 rounded-lg shadow-xl overflow-hidden flex flex-col border border-gray-700 transition-all duration-200 ${isMaximized ? 'w-full h-full rounded-none' : 'w-3/4 h-3/4'
+                }`}>
+                <div className="bg-gray-800 p-2 flex justify-between items-center px-4 border-b border-gray-700 select-none">
+                    <div className="flex items-center gap-2">
+                        <span className="text-white font-mono text-sm">Terminal - {nodeLabel}</span>
+                        {device?.address && <span className="text-gray-500 text-xs">({device.address})</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsMaximized(!isMaximized)}
+                            className="text-gray-400 hover:text-white px-2"
+                            title={isMaximized ? "Restore" : "Maximize"}
+                        >
+                            {isMaximized ? '❐' : '□'}
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white px-2"
+                            title="Close"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
-                <div className="flex-1 p-2 bg-[#1e1e1e]" ref={terminalRef}></div>
+                {/* 
+                   text-left aligns the container content.
+                   pl-2 pt-2 adds a little padding so text isn't glued to edge.
+                */}
+                <div className="flex-1 bg-[#1e1e1e] text-left p-1 overflow-hidden relative">
+                    <div ref={terminalRef} className="h-full w-full" />
+                </div>
             </div>
         </div>
     );
-}
+};
 
 export default TerminalModal;
