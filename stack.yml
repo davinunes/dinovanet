@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  dev-network-manager:
+    image: node:20-bookworm
+    container_name: network_manager_dev
+    working_dir: /app
+    volumes:
+      - /root/dinovanet:/app
+    ports:
+      - "5173:5173"  # Vite Frontend
+      - "3000:3000"  # Node Backend API / WebSockets
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+    # Necessário para o node-pty compilar corretamente se houver dependências nativas
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:20-bookworm
+        RUN apt-get update && apt-get install -y python3 make g++ libssh2-1-dev
+    restart: unless-stopped
+
+  # Proxy VNC opcional para testar o RDP/VNC no MVP
+  novnc-proxy:
+    image: theasp/novnc:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - DISPLAY_WIDTH=1280
+      - DISPLAY_HEIGHT=720
