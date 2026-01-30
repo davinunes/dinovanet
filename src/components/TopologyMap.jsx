@@ -14,184 +14,239 @@ import DeviceManager from './DeviceManager';
 import WindowManager from './WindowManager';
 
 function TopologyMap() {
-    const nodeTypes = useMemo(() => ({}), []);
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const containerRef = useRef(null);
+    const nodeTypes = {}; // Define outside to avoid recreation warning
 
-    // State for interactions
-    const [terminalNode, setTerminalNode] = useState(null); // Deprecated but keeping for safety
-    const [detailsNode, setDetailsNode] = useState(null);
-    const [menu, setMenu] = useState(null);
-    const [isManagerOpen, setIsManagerOpen] = useState(false);
+    function TopologyMap() {
+        const [nodes, setNodes, onNodesChange] = useNodesState([]);
+        const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+        const containerRef = useRef(null);
 
-    // Multi-Session State
-    const [sessions, setSessions] = useState([]);
+        // State for interactions
+        const [terminalNode, setTerminalNode] = useState(null);
+        const [detailsNode, setDetailsNode] = useState(null);
+        const [menu, setMenu] = useState(null);
+        const [isManagerOpen, setIsManagerOpen] = useState(false);
 
-    // Fetch Topology Data
-    const fetchTopology = useCallback(() => {
-        fetch('/api/topology')
-            .then(res => res.json())
-            .then(data => {
-                setNodes(data.nodes);
-                setEdges(data.edges);
-            })
-            .catch(err => console.error("Failed to fetch topology:", err));
-    }, [setNodes, setEdges]);
+        // Multi-Session State
+        const [sessions, setSessions] = useState([]);
 
-    useEffect(() => {
-        fetchTopology();
-    }, [fetchTopology]);
+        // Fetch Topology Data
+        const fetchTopology = useCallback(() => {
+            fetch('/api/topology')
+                .then(res => res.json())
+                .then(data => {
+                    setNodes(data.nodes);
+                    setEdges(data.edges);
+                })
+                .catch(err => console.error("Failed to fetch topology:", err));
+        }, [setNodes, setEdges]);
+
+        useEffect(() => {
+            fetchTopology();
+        }, [fetchTopology]);
 
 
-    const onConnect = useCallback((params) => {
-        setEdges((eds) => addEdge(params, eds));
-        // Persist connection
-        fetch('/api/connections', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify([...edges, { ...params, id: `e${params.source}-${params.target}` }])
-        });
-    }, [edges, setEdges]);
+        const onConnect = useCallback((params) => {
+            // Create a unique ID for the edge to prevent duplicates and ensure stability
+            const edgeId = `e${params.source}-${params.target}`;
+            const newEdge = { ...params, id: edgeId };
 
-    // Helper to get coordinates relative to the main container
-    const getRelativeCoords = (event) => {
-        if (!containerRef.current) return { x: event.clientX, y: event.clientY };
-        const bounds = containerRef.current.getBoundingClientRect();
-        return {
-            x: event.clientX - bounds.left,
-            y: event.clientY - bounds.top
-        };
-    };
+            setEdges((eds) => {
+                const newEdges = addEdge(newEdge, eds);
+                // Persist the NEW complete list of edges to ensure backend is in sync
+                // Note: In a real app, we should just POST the new edge, but our backend replaces all.
+                fetch('/api/connections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newEdges)
+                });
+                return newEdges;
+            });
+        }, [setEdges]);
 
-    const onNodeContextMenu = useCallback((event, node) => {
-        event.preventDefault();
-        const coords = getRelativeCoords(event);
-        setMenu({
-            x: coords.x,
-            y: coords.y,
-            target: 'node',
-            node: node,
-        });
-    }, []);
+        // Handle Node Drag Stop - Persist Position
+        const onNodeDragStop = useCallback((event, node) => {
+            fetch(`/api/devices/${node.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ position: node.position })
+            }).catch(err => console.error("Failed to save node position:", err));
+        }, []);
 
-    const onPaneContextMenu = useCallback((event) => {
-        event.preventDefault();
-        const coords = getRelativeCoords(event);
-        setMenu({
-            x: coords.x,
-            y: coords.y,
-            target: 'pane',
-            node: null,
-        });
-    }, []);
-
-    const onPaneClick = useCallback(() => setMenu(null), []);
-
-    const handleMenuAction = (action) => {
-        if (!menu) return;
-
-        if (action === 'terminal') {
-            // Add new session
-            const newSession = {
-                id: `term-${Date.now()}`,
-                nodeLabel: menu.node.data.label || 'Unknown',
-                device: menu.node.data,
-                isActive: true, // Auto-focus new window
-                isMinimized: false,
-                isMaximized: false,
-                initialX: 50 + (sessions.length * 30),
-                initialY: 50 + (sessions.length * 30),
-                type: menu.node.data.protocol === 'rdp' ? 'rdp' : 'ssh' // Helper for WindowManager (though we check device.protocol too)
+        // Helper to get coordinates relative to the main container
+        const getRelativeCoords = (event) => {
+            if (!containerRef.current) return { x: event.clientX, y: event.clientY };
+            const bounds = containerRef.current.getBoundingClientRect();
+            return {
+                x: event.clientX - bounds.left,
+                y: event.clientY - bounds.top
             };
-            // Deactivate others and add new
-            setSessions(prev => [...prev.map(s => ({ ...s, isActive: false })), newSession]);
-        } else if (action === 'details') {
-            setDetailsNode(menu.node);
-        } else if (action === 'manage') {
-            setIsManagerOpen(true);
-        }
-    };
+        };
 
-    const closeDetails = () => setDetailsNode(null);
-    const closeMenu = () => setMenu(null);
+        const onNodeContextMenu = useCallback((event, node) => {
+            event.preventDefault();
+            const coords = getRelativeCoords(event);
+            setMenu({
+                x: coords.x,
+                y: coords.y,
+                target: 'node',
+                node: node,
+            });
+        }, []);
 
-    // Window Manager Handlers
-    const handleUpdateSession = (id, updates) => {
-        setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-    };
+        const onEdgeContextMenu = useCallback((event, edge) => {
+            event.preventDefault();
+            const coords = getRelativeCoords(event);
+            setMenu({
+                x: coords.x,
+                y: coords.y,
+                target: 'edge', // New target type
+                edge: edge,     // Pass the edge object
+            });
+        }, []);
 
-    const handleCloseSession = (id) => {
-        setSessions(prev => prev.filter(s => s.id !== id));
-    };
+        const onPaneContextMenu = useCallback((event) => {
+            event.preventDefault();
+            const coords = getRelativeCoords(event);
+            setMenu({
+                x: coords.x,
+                y: coords.y,
+                target: 'pane',
+                node: null,
+            });
+        }, []);
 
-    const handleFocusSession = (id) => {
-        setSessions(prev => prev.map(s => ({ ...s, isActive: s.id === id })));
-    };
+        const onPaneClick = useCallback(() => setMenu(null), []);
 
-    return (
-        <div ref={containerRef} style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-            {/* Admin Controls */}
-            <div className="absolute top-4 right-4 z-40">
-                <button
-                    onClick={() => setIsManagerOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-lg border border-blue-400 font-bold text-sm transition-all transform hover:scale-105"
+        const handleMenuAction = (action) => {
+            if (!menu) return;
+
+            if (action === 'terminal') {
+                // Add new session
+                const newSession = {
+                    id: `term-${Date.now()}`,
+                    nodeLabel: menu.node.data.label || 'Unknown',
+                    device: menu.node.data,
+                    isActive: true, // Auto-focus new window
+                    isMinimized: false,
+                    isMaximized: false,
+                    initialX: 50 + (sessions.length * 30),
+                    initialY: 50 + (sessions.length * 30),
+                    type: menu.node.data.protocol === 'rdp' ? 'rdp' : 'ssh'
+                };
+                // Deactivate others and add new
+                setSessions(prev => [...prev.map(s => ({ ...s, isActive: false })), newSession]);
+            } else if (action === 'details') {
+                setDetailsNode(menu.node);
+            } else if (action === 'delete_edge') {
+                // Delete connection logic
+                const edgeId = menu.edge.id;
+                // 1. Update UI
+                setEdges(eds => {
+                    const newEdges = eds.filter(e => e.id !== edgeId);
+                    // 2. Update Backend
+                    fetch(`/api/connections/${edgeId}`, { method: 'DELETE' }) // Call the specific delete endpoint
+                        .catch(err => {
+                            console.error("Failed to delete connection:", err);
+                            // Optional: Revert UI if failed, but for MVP we assume it works or user refreshes
+                            fetch('/api/connections', { // Fallback/Sync: Save the new list if DELETE fails? 
+                                // Actually, our DELETE endpoint just needs the ID.
+                                // But wait, the backend DELETE deletes by ID.
+                                // If we want to be robust with the "bulk save" legacy:
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newEdges)
+                            });
+                        });
+                    return newEdges;
+                });
+            } else if (action === 'manage') {
+                setIsManagerOpen(true);
+            }
+            setMenu(null); // Close menu after action
+        };
+
+        const closeDetails = () => setDetailsNode(null);
+        const closeMenu = () => setMenu(null);
+
+        // Window Manager Handlers
+        const handleUpdateSession = (id, updates) => {
+            setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+        };
+
+        const handleCloseSession = (id) => {
+            setSessions(prev => prev.filter(s => s.id !== id));
+        };
+
+        const handleFocusSession = (id) => {
+            setSessions(prev => prev.map(s => ({ ...s, isActive: s.id === id })));
+        };
+
+        return (
+            <div ref={containerRef} style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+                {/* Admin Controls */}
+                <div className="absolute top-4 right-4 z-40">
+                    <button
+                        onClick={() => setIsManagerOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow-lg border border-blue-400 font-bold text-sm transition-all transform hover:scale-105"
+                    >
+                        ⚙️ Manage Devices
+                    </button>
+                </div>
+
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onNodeContextMenu={onNodeContextMenu}
+                    onEdgeContextMenu={onEdgeContextMenu}
+                    onNodeDragStop={onNodeDragStop}
+                    onPaneContextMenu={onPaneContextMenu}
+                    onPaneClick={onPaneClick}
+                    nodeTypes={nodeTypes}
+                    fitView
                 >
-                    ⚙️ Manage Devices
-                </button>
-            </div>
+                    <Background />
+                    <Controls />
+                </ReactFlow>
 
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onNodeContextMenu={onNodeContextMenu}
-                onPaneContextMenu={onPaneContextMenu}
-                onPaneClick={onPaneClick}
-                nodeTypes={nodeTypes}
-                fitView
-            >
-                <Background />
-                <Controls />
-            </ReactFlow>
+                {menu && (
+                    <ContextMenu
+                        x={menu.x}
+                        y={menu.y}
+                        onClose={closeMenu}
+                        options={menu.target === 'pane'
+                            ? [{ label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }]
+                            : [
+                                { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
+                                { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
+                            ]
+                        }
+                    />
+                )}
 
-            {menu && (
-                <ContextMenu
-                    x={menu.x}
-                    y={menu.y}
-                    onClose={closeMenu}
-                    options={menu.target === 'pane'
-                        ? [{ label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }]
-                        : [
-                            { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
-                            { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
-                        ]
-                    }
+                <WindowManager
+                    sessions={sessions}
+                    onUpdateSession={handleUpdateSession}
+                    onCloseSession={handleCloseSession}
+                    onFocusSession={handleFocusSession}
                 />
-            )}
 
-            <WindowManager
-                sessions={sessions}
-                onUpdateSession={handleUpdateSession}
-                onCloseSession={handleCloseSession}
-                onFocusSession={handleFocusSession}
-            />
+                <AssetDetails
+                    isOpen={!!detailsNode}
+                    onClose={closeDetails}
+                    node={detailsNode}
+                />
 
-            <AssetDetails
-                isOpen={!!detailsNode}
-                onClose={closeDetails}
-                node={detailsNode}
-            />
+                <DeviceManager
+                    isOpen={isManagerOpen}
+                    onClose={() => setIsManagerOpen(false)}
+                    onDevicesChanged={fetchTopology}
+                />
+            </div>
+        );
+    }
 
-            <DeviceManager
-                isOpen={isManagerOpen}
-                onClose={() => setIsManagerOpen(false)}
-                onDevicesChanged={fetchTopology}
-            />
-        </div>
-    );
-}
-
-export default TopologyMap;
+    export default TopologyMap;
