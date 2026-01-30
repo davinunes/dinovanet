@@ -134,6 +134,12 @@ function TopologyMap() {
         if (!menu) return;
 
         if (action === 'terminal') {
+            // Auto-copy password if available
+            if (menu.node.data.password) {
+                navigator.clipboard.writeText(menu.node.data.password)
+                    .catch(err => console.error('Failed to copy password:', err));
+            }
+
             // Add new session
             const newSession = {
                 id: `term-${Date.now()}`,
