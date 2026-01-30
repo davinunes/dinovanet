@@ -24,29 +24,32 @@ app.use(express.json());
 
 // --- API Endpoints ---
 
-// Get consolidated Topology (Nodes + Edges)
+// Get Topology Data
 app.get('/api/topology', async (req, res) => {
     try {
-        const devices = await db.getDevices();
-        const connections = await db.getConnections();
+        const topologies = await db.getTopologies();
+        let topology;
 
-        // Map devices to React Flow nodes
-        const nodes = devices.map(d => ({
-            id: d.id,
-            // If position is saved in device, use it, else default (random or layout needed later)
-            position: d.position || { x: Math.random() * 500, y: Math.random() * 500 },
-            data: { ...d, label: d.description || d.ip }, // Spread all device props to data
-            style: {
-                background: d.type === 'cloud' ? '#6ede87' : '#fff',
-                color: '#333',
-                border: '1px solid #777',
-                padding: '10px',
-                borderRadius: '5px',
-                width: 150
-            }
-        }));
+        if (req.query.id) {
+            topology = topologies.find(t => t.id === req.query.id);
+        }
 
-        res.json({ nodes, edges: connections });
+        // Default to the first one if not found or not specified
+        if (!topology && topologies.length > 0) {
+            topology = topologies[0];
+        }
+
+        if (!topology) {
+            // Fallback if no topologies exist (shouldn't happen after migration)
+            return res.json({ nodes: [], edges: [] });
+        }
+
+        res.json({
+            id: topology.id, // Send ID so frontend knows which one it is
+            name: topology.name,
+            nodes: topology.nodes,
+            edges: topology.edges
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to load topology' });
@@ -64,7 +67,7 @@ app.post('/api/devices', async (req, res) => {
     const newDevice = {
         id: uuidv4(),
         ...req.body,
-        position: { x: 100, y: 100 } // Default spawn
+        // No position here anymore, will be added to topology when placed
     };
     devices.push(newDevice);
     await db.saveDevices(devices);
@@ -72,11 +75,55 @@ app.post('/api/devices', async (req, res) => {
 });
 
 app.put('/api/devices/:id', async (req, res) => {
+    const { id } = req.params;
+
+    // 1. Handle Position Update (belongs to Topology)
+    if (req.body.position) {
+        const topologies = await db.getTopologies();
+        let updated = false;
+
+        // Naive: Update this node in ALL topologies it exists in 
+        // (In future: Frontend should pass topologyId context)
+        for (const t of topologies) {
+            const nodeIndex = t.nodes.findIndex(n => n.id === id);
+            if (nodeIndex !== -1) {
+                t.nodes[nodeIndex].position = req.body.position;
+                updated = true;
+            }
+        }
+
+        if (updated) {
+            await db.saveTopologies(topologies);
+            return res.json({ success: true, message: "Position updated in topologies" });
+        }
+        // If not found in topology, fallthrough to check inventory (unlikely for coords)
+    }
+
+    // 2. Handle Inventory Update (Description, IP, etc)
     const devices = await db.getDevices();
-    const index = devices.findIndex(d => d.id === req.params.id);
+    const index = devices.findIndex(d => d.id === id);
     if (index !== -1) {
         devices[index] = { ...devices[index], ...req.body };
+        // Remove position if it accidentally got sent to inventory
+        delete devices[index].position;
+
         await db.saveDevices(devices);
+
+        // Also update the snapshot in topologies? 
+        // Ideally yes, but for MVP we rely on "Data" being in the node.
+        // Let's do a quick sync to active topologies
+        const topologies = await db.getTopologies();
+        let topoChanged = false;
+        topologies.forEach(t => {
+            t.nodes.forEach(n => {
+                if (n.deviceId === id || n.id === id) {
+                    n.data = { ...n.data, ...req.body };
+                    topoChanged = true;
+                }
+            });
+        });
+        if (topoChanged) await db.saveTopologies(topologies);
+
         res.json(devices[index]);
     } else {
         res.status(404).json({ error: 'Device not found' });
@@ -97,19 +144,45 @@ app.delete('/api/devices/:id', async (req, res) => {
 });
 
 // Connections
-// Save all connections (Bulk Replace)
+// Save all connections (Bulk Replace) - now per Topology
 app.post('/api/connections', async (req, res) => {
-    const connections = req.body; // Expects array of edges
-    await db.saveConnections(connections);
+    // Current MVP frontend just sends the list of edges.
+    // We assume this applies to the "Default" or first topology since we don't have ID context yet.
+    const connections = req.body;
+
+    const topologies = await db.getTopologies();
+    if (topologies.length > 0) {
+        // Update the first topology's edges
+        topologies[0].edges = connections;
+        await db.saveTopologies(topologies);
+    }
+
+    await db.saveConnections(connections); // Keep legacy file in sync just in case? Or deprecate.
     res.json({ success: true });
 });
 
 app.delete('/api/connections/:id', async (req, res) => {
-    let connections = await db.getConnections();
     const idToDelete = req.params.id;
-    // Filter out the connection with the given ID
-    connections = connections.filter(c => c.id !== idToDelete);
-    await db.saveConnections(connections);
+
+    const topologies = await db.getTopologies();
+    let updated = false;
+
+    // Remove from ALL topologies (safe default)
+    topologies.forEach(t => {
+        const initialLength = t.edges.length;
+        t.edges = t.edges.filter(c => c.id !== idToDelete);
+        if (t.edges.length !== initialLength) updated = true;
+    });
+
+    if (updated) {
+        await db.saveTopologies(topologies);
+    }
+
+    // Legacy cleanup
+    let oldConnections = await db.getConnections();
+    oldConnections = oldConnections.filter(c => c.id !== idToDelete);
+    await db.saveConnections(oldConnections);
+
     res.json({ success: true });
 });
 
