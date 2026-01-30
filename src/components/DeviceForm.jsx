@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const DeviceForm = ({ isOpen, onClose, onSave, device = null }) => {
+const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => {
     const [formData, setFormData] = useState({
         description: '',
         type: 'server',
@@ -56,7 +56,25 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null }) => {
                             placeholder="e.g. Web Server Prod"
                             required
                         />
+                        required
+                        />
                     </div>
+
+                    <div>
+                        <label className="block text-gray-400 text-xs mb-1">Client Group</label>
+                        <select
+                            name="groupId"
+                            value={formData.groupId || ''}
+                            onChange={handleChange}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                        >
+                            <option value="">- No Group -</option>
+                            {groups && groups.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <label className="block text-gray-400 text-xs mb-1">Type</label>
