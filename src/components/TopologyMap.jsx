@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
     Controls,
     Background,
@@ -17,9 +17,10 @@ function TopologyMap() {
     const nodeTypes = useMemo(() => ({}), []);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const containerRef = useRef(null);
 
     // State for interactions
-    const [terminalNode, setTerminalNode] = useState(null); // Deprecated but keeping for safety if needed, mostly unused now
+    const [terminalNode, setTerminalNode] = useState(null); // Deprecated but keeping for safety
     const [detailsNode, setDetailsNode] = useState(null);
     const [menu, setMenu] = useState(null);
     const [isManagerOpen, setIsManagerOpen] = useState(false);
@@ -49,12 +50,14 @@ function TopologyMap() {
         fetch('/api/connections', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify([...edges, { ...params, id: `e${params.source}-${params.target}` }]) // Simple naive edge save
+            body: JSON.stringify([...edges, { ...params, id: `e${params.source}-${params.target}` }])
         });
     }, [edges, setEdges]);
 
+    // Helper to get coordinates relative to the main container
     const getRelativeCoords = (event) => {
-        const bounds = event.currentTarget.getBoundingClientRect();
+        if (!containerRef.current) return { x: event.clientX, y: event.clientY };
+        const bounds = containerRef.current.getBoundingClientRect();
         return {
             x: event.clientX - bounds.left,
             y: event.clientY - bounds.top
@@ -63,25 +66,25 @@ function TopologyMap() {
 
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault();
-        // Note: For Nodes, the event target might be the node element itself or the pane?
-        // Actually react flow handles this event. 
-        // We want global page coords for fixed position? No, absolute in relative container.
-
-        // Let's rely on the main container ref if possible, or just hack it with event.target
-        // Safest is to use the .react-flow__pane or the wrapper div
-        // The wrapper div is the parent of the ContextMenu.
-
-        // Since ContextMenu is absolute in the wrapper div:
-        // x = event.clientX - wrapperRect.left
-        // y = event.clientY - wrapperRect.top
-
-        // We can get the wrapper bounding rect from the event if we assume the wrapper is the currentTarget's closest relative parent?
-        // Or simply add a ref to the wrapper div.
-
-        // Let's just fix it by getting the wrapper Ref.
+        const coords = getRelativeCoords(event);
+        setMenu({
+            x: coords.x,
+            y: coords.y,
+            target: 'node',
+            node: node,
+        });
     }, []);
-    // Wait, I need to add a Ref to the wrapper div first. 
-    // I'll update the component to use a ref.
+
+    const onPaneContextMenu = useCallback((event) => {
+        event.preventDefault();
+        const coords = getRelativeCoords(event);
+        setMenu({
+            x: coords.x,
+            y: coords.y,
+            target: 'pane',
+            node: null,
+        });
+    }, []);
 
     const onPaneClick = useCallback(() => setMenu(null), []);
 
@@ -94,7 +97,7 @@ function TopologyMap() {
                 id: `term-${Date.now()}`,
                 nodeLabel: menu.node.data.label || 'Unknown',
                 device: menu.node.data,
-                isActive: true,
+                isActive: true, // Auto-focus new window
                 isMinimized: false,
                 isMaximized: false,
                 initialX: 50 + (sessions.length * 30),
@@ -126,7 +129,7 @@ function TopologyMap() {
     };
 
     return (
-        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+        <div ref={containerRef} style={{ width: '100vw', height: '100vh', position: 'relative' }}>
             {/* Admin Controls */}
             <div className="absolute top-4 right-4 z-40">
                 <button
@@ -168,7 +171,6 @@ function TopologyMap() {
                 />
             )}
 
-            {/* Replaced TerminalModal with WindowManager */}
             <WindowManager
                 sessions={sessions}
                 onUpdateSession={handleUpdateSession}
