@@ -10,7 +10,7 @@ const socket = io({
     transports: ["websocket", "polling"],
 });
 
-const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
+const TerminalModal = ({ isOpen, onClose, nodeLabel, device, isEmbedded = false }) => {
     const terminalRef = useRef(null);
     const socketRef = useRef(null);
     const termRef = useRef(null);
@@ -74,9 +74,11 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
         const handleResize = () => {
             // Wait for transition if maximizing
             setTimeout(() => {
-                fitAddon.fit();
-                if (term.cols && term.rows) {
-                    socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+                if (term.element) {
+                    fitAddon.fit();
+                    if (term.cols && term.rows) {
+                        socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+                    }
                 }
             }, 50);
         };
@@ -108,10 +110,10 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className={`bg-gray-900 rounded-lg shadow-xl overflow-hidden flex flex-col border border-gray-700 transition-all duration-200 ${isMaximized ? 'w-full h-full rounded-none' : 'w-3/4 h-3/4'
-                }`}>
+    const content = (
+        <div className={`bg-gray-900 flex flex-col h-full w-full ${!isEmbedded ? 'rounded-lg shadow-xl border border-gray-700 transition-all duration-200' : ''} ${!isEmbedded && isMaximized ? 'fixed inset-0 rounded-none z-[60]' : (!isEmbedded ? 'w-3/4 h-3/4 relative' : '')
+            }`}>
+            {!isEmbedded && (
                 <div className="bg-gray-800 p-2 flex justify-between items-center px-4 border-b border-gray-700 select-none">
                     <div className="flex items-center gap-2">
                         <span className="text-white font-mono text-sm">Terminal - {nodeLabel}</span>
@@ -134,14 +136,22 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
                         </button>
                     </div>
                 </div>
-                {/* 
-                   text-left aligns the container content.
-                   pl-2 pt-2 adds a little padding so text isn't glued to edge.
-                */}
-                <div className="flex-1 bg-[#1e1e1e] text-left p-1 overflow-hidden relative">
-                    <div ref={terminalRef} className="h-full w-full" />
-                </div>
+            )}
+
+            {/* 
+               Content Area
+            */}
+            <div className="flex-1 bg-[#1e1e1e] text-left p-1 overflow-hidden relative">
+                <div ref={terminalRef} className="h-full w-full" />
             </div>
+        </div>
+    );
+
+    if (isEmbedded) return content;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            {content}
         </div>
     );
 };
