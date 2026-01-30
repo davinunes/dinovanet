@@ -10,32 +10,43 @@ const socket = io({
     transports: ["websocket", "polling"],
 });
 
-function TerminalModal({ isOpen, onClose, nodeLabel }) {
+const TerminalModal = ({ isOpen, onClose, nodeLabel, device }) => {
     const terminalRef = useRef(null);
-    const xtermRef = useRef(null);
+    const socketRef = useRef(null);
+    const termRef = useRef(null);
     const fitAddonRef = useRef(null);
 
     useEffect(() => {
-        if (!isOpen || !terminalRef.current) return;
+        if (!isOpen) return;
 
-        // Initialize xterm
+        // Create socket
+        const socket = io({
+            path: "/socket.io/",
+            transports: ["websocket", "polling"],
+        });
+        socketRef.current = socket;
+
+        // Create terminal
         const term = new Terminal({
             cursorBlink: true,
+            fontSize: 14,
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
                 background: '#1e1e1e',
-            },
+            }
         });
+
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
 
         term.open(terminalRef.current);
         fitAddon.fit();
 
-        xtermRef.current = term;
+        termRef.current = term;
         fitAddonRef.current = fitAddon;
 
         // Initialize server pty
-        socket.emit('term.init');
+        socket.emit('term.init', { device });
 
         // Handle data from server
         const handleData = (data) => {

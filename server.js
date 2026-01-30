@@ -120,24 +120,48 @@ const sessions = {};
 io.on("connection", (socket) => {
     console.log("Client connected:", socket.id);
 
-    socket.on("term.init", () => {
-        const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+    socket.on("term.init", (payload) => {
+        const device = payload?.device;
+        let ptyProcess;
 
-        const ptyProcess = pty.spawn(shell, [], {
-            name: 'xterm-color',
-            cols: 80,
-            rows: 24,
-            cwd: process.env.HOME || process.cwd(),
-            env: process.env
-        });
+        if (device && device.protocol === 'ssh' && device.address) {
+            // SSH CONNECTION
+            // Warning: StrictHostKeyChecking=no is used for convenience in this MVP.
+            // In production, we should handle host keys properly.
+            const user = device.username || 'root'; // default user
+            const target = `${user}@${device.address}`;
+            const cmd = 'ssh';
+            const args = ['-o', 'StrictHostKeyChecking=no', target];
+
+            console.log(`Spawning SSH for ${socket.id}: ${cmd} ${args.join(' ')}`);
+
+            ptyProcess = pty.spawn(cmd, args, {
+                name: 'xterm-color',
+                cols: 80,
+                rows: 24,
+                cwd: process.env.HOME || process.cwd(),
+                env: process.env
+            });
+
+        } else {
+            // LOCAL SHELL FALLBACK
+            const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
+            console.log(`Spawning Local Shell for ${socket.id}: ${shell}`);
+
+            ptyProcess = pty.spawn(shell, [], {
+                name: 'xterm-color',
+                cols: 80,
+                rows: 24,
+                cwd: process.env.HOME || process.cwd(),
+                env: process.env
+            });
+        }
 
         sessions[socket.id] = ptyProcess;
 
         ptyProcess.onData((data) => {
             socket.emit('term.data', data);
         });
-
-        console.log(`PTY spawned for ${socket.id}: ${shell}`);
     });
 
     socket.on("term.input", (data) => {
