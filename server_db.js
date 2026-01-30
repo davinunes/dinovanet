@@ -4,6 +4,8 @@ import path from 'path';
 const DATA_DIR = './data';
 const DEVICES_FILE = path.join(DATA_DIR, 'devices.json');
 const CONNECTIONS_FILE = path.join(DATA_DIR, 'connections.json');
+const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
+const TOPOLOGIES_FILE = path.join(DATA_DIR, 'topologies.json');
 
 // Ensure data directory exists
 async function ensureDir() {
@@ -38,4 +40,8 @@ export const db = {
     saveDevices: (devices) => writeJson(DEVICES_FILE, devices),
     getConnections: () => readJson(CONNECTIONS_FILE),
     saveConnections: (connections) => writeJson(CONNECTIONS_FILE, connections),
+    getGroups: () => readJson(GROUPS_FILE),
+    saveGroups: (groups) => writeJson(GROUPS_FILE, groups),
+    getTopologies: () => readJson(TOPOLOGIES_FILE),
+    saveTopologies: (topologies) => writeJson(TOPOLOGIES_FILE, topologies),
 };

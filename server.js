@@ -113,6 +113,34 @@ app.delete('/api/connections/:id', async (req, res) => {
     res.json({ success: true });
 });
 
+res.json({ success: true });
+});
+
+// Groups CRUD
+app.get('/api/groups', async (req, res) => {
+    res.json(await db.getGroups());
+});
+app.post('/api/groups', async (req, res) => {
+    const groups = await db.getGroups();
+    const newGroup = { id: uuidv4(), ...req.body };
+    groups.push(newGroup);
+    await db.saveGroups(groups);
+    res.json(newGroup);
+});
+
+// Topologies CRUD
+app.get('/api/topologies', async (req, res) => {
+    res.json(await db.getTopologies());
+});
+app.post('/api/topologies', async (req, res) => {
+    const topologies = await db.getTopologies();
+    const newTopology = { id: uuidv4(), ...req.body };
+    topologies.push(newTopology);
+    await db.saveTopologies(topologies);
+    res.json(newTopology);
+});
+
+// Legacy Position (for backwards compatibility or specific node update)
 app.post('/api/nodes/position', async (req, res) => {
     // Optional: save node positions
     const { id, position } = req.body;
