@@ -14,6 +14,7 @@ import DeviceManager from './DeviceManager';
 import WindowManager from './WindowManager';
 
 const nodeTypes = {}; // Define outside to avoid recreation warning
+const defaultEdgeOptions = { type: 'smoothstep', style: { strokeWidth: 2, stroke: '#b1b1b7' } };
 
 function TopologyMap() {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -216,8 +217,9 @@ function TopologyMap() {
                 onNodeDragStop={onNodeDragStop}
                 onPaneContextMenu={onPaneContextMenu}
                 onPaneClick={onPaneClick}
+                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
-                defaultEdgeOptions={{ type: 'smoothstep', style: { strokeWidth: 2, stroke: '#b1b1b7' } }} // Global default
+                defaultEdgeOptions={defaultEdgeOptions}
                 fitView
             >
                 <Background />
