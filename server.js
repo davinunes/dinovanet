@@ -97,6 +97,7 @@ app.delete('/api/devices/:id', async (req, res) => {
 });
 
 // Connections
+// Save all connections (Bulk Replace)
 app.post('/api/connections', async (req, res) => {
     const connections = req.body; // Expects array of edges
     await db.saveConnections(connections);
