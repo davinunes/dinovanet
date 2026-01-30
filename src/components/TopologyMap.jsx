@@ -101,7 +101,8 @@ function TopologyMap() {
                 isMinimized: false,
                 isMaximized: false,
                 initialX: 50 + (sessions.length * 30),
-                initialY: 50 + (sessions.length * 30)
+                initialY: 50 + (sessions.length * 30),
+                type: menu.node.data.protocol === 'rdp' ? 'rdp' : 'ssh' // Helper for WindowManager (though we check device.protocol too)
             };
             // Deactivate others and add new
             setSessions(prev => [...prev.map(s => ({ ...s, isActive: false })), newSession]);

@@ -1,6 +1,7 @@
 import React from 'react';
 import WindowFrame from './WindowFrame';
-import TerminalModal from './TerminalModal'; // We will reuse the internal logic of TerminalModal
+import TerminalModal from './TerminalModal';
+import RDPSession from './RDPSession';
 
 const WindowManager = ({ sessions, onUpdateSession, onCloseSession, onFocusSession }) => {
 
@@ -27,14 +28,23 @@ const WindowManager = ({ sessions, onUpdateSession, onCloseSession, onFocusSessi
                             initialX={session.initialX}
                             initialY={session.initialY}
                         >
-                            {/* Reuse TerminalModal content logic, we need to adapt TerminalModal to be headless or purely content */}
-                            <TerminalModal
-                                isOpen={true}
-                                onClose={() => onCloseSession(session.id)} // Redundant but prop required
-                                nodeLabel={session.nodeLabel}
-                                device={session.device}
-                                isEmbedded={true} // New prop to tell it to skip the modal wrapper
-                            />
+                            {/* Dynamic Content based on Protocol */}
+                            {(!session.device?.protocol || session.device.protocol === 'ssh') && (
+                                <TerminalModal
+                                    isOpen={true}
+                                    onClose={() => onCloseSession(session.id)}
+                                    nodeLabel={session.nodeLabel}
+                                    device={session.device}
+                                    isEmbedded={true}
+                                />
+                            )}
+                            {session.device?.protocol === 'rdp' && (
+                                <RDPSession
+                                    nodeLabel={session.nodeLabel}
+                                    device={session.device}
+                                    onClose={() => onCloseSession(session.id)}
+                                />
+                            )}
                         </WindowFrame>
                     </div>
                 ))}
