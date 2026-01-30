@@ -1,0 +1,7 @@
+{
+    "name": "network-manager",
+    "version": "1.0.0",
+    "scripts": {
+        "dev": "node -e 'console.log(\"Aguardando setup...\"); setInterval(() => {}, 1000);'"
+    }
+}
