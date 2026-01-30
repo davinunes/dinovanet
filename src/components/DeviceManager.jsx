@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import DeviceForm from './DeviceForm';
 
 const DeviceManager = ({ isOpen, onClose, onDevicesChanged }) => {
+    const [devices, setDevices] = useState([]);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingDevice, setEditingDevice] = useState(null);
     const [groups, setGroups] = useState([]);
     const [viewMode, setViewMode] = useState('devices'); // 'devices' | 'groups'
 
