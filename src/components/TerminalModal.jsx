@@ -4,14 +4,10 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import { io } from 'socket.io-client';
 
-// Use the same domain for socket connection if production, or localhost for dev if distinct
-// Since we are proxying, we should point to the Caddy URL or relative path if served from same origin
-// But per requirement we point to Caddy path.
-// The socket path was configured as /socket.io/ in server.js
-
-const socket = io("https://book.digitalinovation.com.br", {
+// Use relative path so it goes through the same domain (Caddy -> Vite -> Proxy -> Backend)
+const socket = io({
     path: "/socket.io/",
-    transports: ["websocket", "polling"], // Ensure websocket is tried
+    transports: ["websocket", "polling"],
 });
 
 function TerminalModal({ isOpen, onClose, nodeLabel }) {
@@ -39,33 +35,39 @@ function TerminalModal({ isOpen, onClose, nodeLabel }) {
         fitAddonRef.current = fitAddon;
 
         // Initialize server pty
+        console.log("Emitting term.init");
         socket.emit('term.init');
 
         // Handle data from server
-        socket.on('term.data', (data) => {
+        const handleData = (data) => {
+            // console.log("Received data:", data); // verbose
             term.write(data);
-        });
+        };
+        socket.on('term.data', handleData);
 
         // Handle input
         term.onData((data) => {
+            console.log("Sending input:", data);
             socket.emit('term.input', data);
         });
 
         // Handle resize
         const handleResize = () => {
             fitAddon.fit();
+            console.log("Resizing term:", term.cols, term.rows);
             socket.emit('term.resize', { cols: term.cols, rows: term.rows });
         };
 
         window.addEventListener('resize', handleResize);
 
         // Initial resize to sync server
-        handleResize();
+        setTimeout(handleResize, 100); // Small delay to ensure render
 
         return () => {
             // Cleanup
+            console.log("Cleaning up terminal");
             term.dispose();
-            socket.off('term.data');
+            socket.off('term.data', handleData);
             window.removeEventListener('resize', handleResize);
         };
     }, [isOpen]);

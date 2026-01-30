@@ -7,5 +7,12 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     allowedHosts: ['book.digitalinovation.com.br'],
+    proxy: {
+      '/socket.io': {
+        target: 'http://localhost:3000',
+        ws: true,
+        changeOrigin: true
+      }
+    }
   },
 })
