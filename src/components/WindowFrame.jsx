@@ -26,22 +26,42 @@ const WindowFrame = ({
         e.preventDefault(); // Prevent text selection
         onFocus(); // Bring to front
 
-        const rect = windowRef.current.getBoundingClientRect();
-        dragOffset.current = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
+        let initialLeft = 0;
+        let initialTop = 0;
+
+        if (windowRef.current) {
+            const rect = windowRef.current.getBoundingClientRect();
+            // Calculate where the mouse is relative to the window's top-left
+            dragOffset.current = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
         setIsDragging(true);
     };
 
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (!isDragging) return;
-
             e.preventDefault();
 
-            const newX = e.clientX - dragOffset.current.x;
-            const newY = e.clientY - dragOffset.current.y;
+            // We need to calculate the new LEFT/TOP based on mouse position.
+            // Position = Mouse - Offset - ParentOffset.
+            // But 'position' state is used for 'left' and 'top' styles.
+            // If parent is body (relative to viewport), clientX is fine.
+            // If parent is relative div, we must subtract the parent's rect.
+
+            let parentLeft = 0;
+            let parentTop = 0;
+
+            if (windowRef.current && windowRef.current.offsetParent) {
+                const parentRect = windowRef.current.offsetParent.getBoundingClientRect();
+                parentLeft = parentRect.left;
+                parentTop = parentRect.top;
+            }
+
+            const newX = e.clientX - parentLeft - dragOffset.current.x;
+            const newY = e.clientY - parentTop - dragOffset.current.y;
 
             setPosition({ x: newX, y: newY });
         };
@@ -51,7 +71,6 @@ const WindowFrame = ({
         };
 
         if (isDragging) {
-            // Attach to window to handle fast drags outside the component
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }

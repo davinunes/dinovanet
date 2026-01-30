@@ -53,25 +53,35 @@ function TopologyMap() {
         });
     }, [edges, setEdges]);
 
-    const onNodeContextMenu = useCallback((event, node) => {
-        event.preventDefault(); // Prevent native browser menu
-        setMenu({
-            x: event.clientX,
-            y: event.clientY,
-            target: 'node',
-            node: node,
-        });
-    }, []);
+    const getRelativeCoords = (event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        return {
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top
+        };
+    };
 
-    const onPaneContextMenu = useCallback((event) => {
+    const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault();
-        setMenu({
-            x: event.clientX,
-            y: event.clientY,
-            target: 'pane',
-            node: null,
-        });
+        // Note: For Nodes, the event target might be the node element itself or the pane?
+        // Actually react flow handles this event. 
+        // We want global page coords for fixed position? No, absolute in relative container.
+
+        // Let's rely on the main container ref if possible, or just hack it with event.target
+        // Safest is to use the .react-flow__pane or the wrapper div
+        // The wrapper div is the parent of the ContextMenu.
+
+        // Since ContextMenu is absolute in the wrapper div:
+        // x = event.clientX - wrapperRect.left
+        // y = event.clientY - wrapperRect.top
+
+        // We can get the wrapper bounding rect from the event if we assume the wrapper is the currentTarget's closest relative parent?
+        // Or simply add a ref to the wrapper div.
+
+        // Let's just fix it by getting the wrapper Ref.
     }, []);
+    // Wait, I need to add a Ref to the wrapper div first. 
+    // I'll update the component to use a ref.
 
     const onPaneClick = useCallback(() => setMenu(null), []);
 
