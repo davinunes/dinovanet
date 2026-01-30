@@ -7,11 +7,11 @@ import ReactFlow, {
     addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import TerminalModal from './TerminalModal';
 import ContextMenu from './ContextMenu';
 import AssetDetails from './AssetDetails';
 
 import DeviceManager from './DeviceManager';
+import WindowManager from './WindowManager';
 
 function TopologyMap() {
     const nodeTypes = useMemo(() => ({}), []);
@@ -19,10 +19,13 @@ function TopologyMap() {
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
     // State for interactions
-    const [terminalNode, setTerminalNode] = useState(null);
+    const [terminalNode, setTerminalNode] = useState(null); // Deprecated but keeping for safety if needed, mostly unused now
     const [detailsNode, setDetailsNode] = useState(null);
     const [menu, setMenu] = useState(null);
     const [isManagerOpen, setIsManagerOpen] = useState(false);
+
+    // Multi-Session State
+    const [sessions, setSessions] = useState([]);
 
     // Fetch Topology Data
     const fetchTopology = useCallback(() => {
@@ -74,8 +77,21 @@ function TopologyMap() {
 
     const handleMenuAction = (action) => {
         if (!menu) return;
+
         if (action === 'terminal') {
-            setTerminalNode(menu.node);
+            // Add new session
+            const newSession = {
+                id: `term-${Date.now()}`,
+                nodeLabel: menu.node.data.label || 'Unknown',
+                device: menu.node.data,
+                isActive: true,
+                isMinimized: false,
+                isMaximized: false,
+                initialX: 50 + (sessions.length * 30),
+                initialY: 50 + (sessions.length * 30)
+            };
+            // Deactivate others and add new
+            setSessions(prev => [...prev.map(s => ({ ...s, isActive: false })), newSession]);
         } else if (action === 'details') {
             setDetailsNode(menu.node);
         } else if (action === 'manage') {
@@ -83,9 +99,21 @@ function TopologyMap() {
         }
     };
 
-    const closeTerminal = () => setTerminalNode(null);
     const closeDetails = () => setDetailsNode(null);
     const closeMenu = () => setMenu(null);
+
+    // Window Manager Handlers
+    const handleUpdateSession = (id, updates) => {
+        setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+    };
+
+    const handleCloseSession = (id) => {
+        setSessions(prev => prev.filter(s => s.id !== id));
+    };
+
+    const handleFocusSession = (id) => {
+        setSessions(prev => prev.map(s => ({ ...s, isActive: s.id === id })));
+    };
 
     return (
         <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -130,11 +158,12 @@ function TopologyMap() {
                 />
             )}
 
-            <TerminalModal
-                isOpen={!!terminalNode}
-                onClose={closeTerminal}
-                nodeLabel={terminalNode?.data?.label || 'Unknown'}
-                device={terminalNode?.data}
+            {/* Replaced TerminalModal with WindowManager */}
+            <WindowManager
+                sessions={sessions}
+                onUpdateSession={handleUpdateSession}
+                onCloseSession={handleCloseSession}
+                onFocusSession={handleFocusSession}
             />
 
             <AssetDetails
