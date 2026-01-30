@@ -49,7 +49,14 @@ function TopologyMap() {
         const onConnect = useCallback((params) => {
             // Create a unique ID for the edge to prevent duplicates and ensure stability
             const edgeId = `e${params.source}-${params.target}`;
-            const newEdge = { ...params, id: edgeId };
+            const newEdge = {
+                ...params,
+                id: edgeId,
+                type: 'smoothstep', // Better for network diagrams (right angles)
+                style: { strokeWidth: 2, stroke: '#555' },
+                // If we wanted LACP visual separation, we'd need multiple handles or custom edge.
+                // For now, simpler is better as requested.
+            };
 
             setEdges((eds) => {
                 const newEdges = addEdge(newEdge, eds);
@@ -206,6 +213,7 @@ function TopologyMap() {
                     onPaneContextMenu={onPaneContextMenu}
                     onPaneClick={onPaneClick}
                     nodeTypes={nodeTypes}
+                    defaultEdgeOptions={{ type: 'smoothstep', style: { strokeWidth: 2, stroke: '#b1b1b7' } }} // Global default
                     fitView
                 >
                     <Background />
@@ -228,7 +236,7 @@ function TopologyMap() {
                                     [
                                         { label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }
                                     ]
-                        }    }
+                        }
                     />
                 )}
 
