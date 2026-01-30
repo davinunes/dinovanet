@@ -21,8 +21,8 @@ const AssetDetails = ({ isOpen, onClose, node }) => {
                         <span className="font-semibold text-gray-400">Type:</span>
                         <span className="col-span-2 capitalize">{node.data.type || 'Unknown'}</span>
 
-                        <span className="font-semibold text-gray-400">IP:</span>
-                        <span className="col-span-2 font-mono">{node.data.ip || 'N/A'}</span>
+                        <span className="font-semibold text-gray-400">IP / Address:</span>
+                        <span className="col-span-2 font-mono">{node.data.address || node.data.ip || 'N/A'}</span>
 
                         {node.data.os && (
                             <>
