@@ -28,6 +28,9 @@ app.use(express.json());
 app.get('/api/topology', async (req, res) => {
     try {
         const topologies = await db.getTopologies();
+        // We also need the inventory to hydrate the nodes with fresh data (labels, status, etc.)
+        const devices = await db.getDevices();
+
         let topology;
 
         if (req.query.id) {
@@ -40,14 +43,38 @@ app.get('/api/topology', async (req, res) => {
         }
 
         if (!topology) {
-            // Fallback if no topologies exist (shouldn't happen after migration)
             return res.json({ nodes: [], edges: [] });
         }
+
+        // Hydrate nodes with latest device info
+        const hydratedNodes = topology.nodes.map(n => {
+            const device = devices.find(d => d.id === n.deviceId || d.id === n.id);
+            if (device) {
+                return {
+                    ...n,
+                    data: {
+                        ...n.data,
+                        ...device,
+                        label: device.description || device.ip
+                    },
+                    style: {
+                        background: device.type === 'cloud' ? '#6ede87' : '#fff',
+                        color: '#333',
+                        border: '1px solid #777',
+                        padding: '10px',
+                        borderRadius: '5px',
+                        width: 150,
+                        ...n.style // Allow overriding style if needed
+                    }
+                };
+            }
+            return n; // device might have been deleted? Return as is or filter out.
+        });
 
         res.json({
             id: topology.id, // Send ID so frontend knows which one it is
             name: topology.name,
-            nodes: topology.nodes,
+            nodes: hydratedNodes,
             edges: topology.edges
         });
     } catch (err) {
