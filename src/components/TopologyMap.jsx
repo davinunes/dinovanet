@@ -7,6 +7,7 @@ import ReactFlow, {
     addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import TerminalModal from './TerminalModal';
 
 const initialNodes = [
     {
@@ -35,8 +36,15 @@ const initialEdges = [
 function TopologyMap() {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const [selectedNode, setSelectedNode] = useState(null);
 
     const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+
+    const onNodeClick = useCallback((event, node) => {
+        setSelectedNode(node);
+    }, []);
+
+    const closeTerminal = () => setSelectedNode(null);
 
     return (
         <div style={{ width: '100vw', height: '100vh' }}>
@@ -46,11 +54,17 @@ function TopologyMap() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onNodeClick={onNodeClick}
                 fitView
             >
                 <Background />
                 <Controls />
             </ReactFlow>
+            <TerminalModal
+                isOpen={!!selectedNode}
+                onClose={closeTerminal}
+                nodeLabel={selectedNode?.data?.label || 'Unknown'}
+            />
         </div>
     );
 }
