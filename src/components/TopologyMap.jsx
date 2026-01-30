@@ -217,7 +217,6 @@ function TopologyMap() {
                 onNodeDragStop={onNodeDragStop}
                 onPaneContextMenu={onPaneContextMenu}
                 onPaneClick={onPaneClick}
-                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 fitView
