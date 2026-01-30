@@ -17,34 +17,102 @@ const io = new Server(httpServer, {
 
 app.use(express.json());
 
-// Mock Topology Data
-const topologyData = {
-    nodes: [
-        {
-            id: '1',
-            data: { label: 'Internet', type: 'cloud', ip: '8.8.8.8' },
-            position: { x: 250, y: 5 },
-            style: { background: '#6ede87', color: '#333' },
-        },
-        {
-            id: '2',
-            data: { label: 'Caddy Proxy (Portainer)', type: 'server', ip: '192.168.1.10', os: 'Linux' },
-            position: { x: 100, y: 100 },
-        },
-        {
-            id: '3',
-            data: { label: 'Network Manager (App)', type: 'server', ip: '192.168.1.20', os: 'Linux' },
-            position: { x: 400, y: 100 },
-        },
-    ],
-    edges: [
-        { id: 'e1-2', source: '1', target: '2', animated: true },
-        { id: 'e1-3', source: '1', target: '3', animated: true },
-    ]
-};
+import { db } from './server_db.js';
+import { v4 as uuidv4 } from 'uuid'; // User needs this, I will add to package.json check later or use random string
 
-app.get('/api/topology', (req, res) => {
-    res.json(topologyData);
+app.use(express.json());
+
+// --- API Endpoints ---
+
+// Get consolidated Topology (Nodes + Edges)
+app.get('/api/topology', async (req, res) => {
+    try {
+        const devices = await db.getDevices();
+        const connections = await db.getConnections();
+
+        // Map devices to React Flow nodes
+        const nodes = devices.map(d => ({
+            id: d.id,
+            // If position is saved in device, use it, else default (random or layout needed later)
+            position: d.position || { x: Math.random() * 500, y: Math.random() * 500 },
+            data: { ...d, label: d.description || d.ip }, // Spread all device props to data
+            style: {
+                background: d.type === 'cloud' ? '#6ede87' : '#fff',
+                color: '#333',
+                border: '1px solid #777',
+                padding: '10px',
+                borderRadius: '5px',
+                width: 150
+            }
+        }));
+
+        res.json({ nodes, edges: connections });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to load topology' });
+    }
+});
+
+// Devices CRUD
+app.get('/api/devices', async (req, res) => {
+    const devices = await db.getDevices();
+    res.json(devices);
+});
+
+app.post('/api/devices', async (req, res) => {
+    const devices = await db.getDevices();
+    const newDevice = {
+        id: uuidv4(),
+        ...req.body,
+        position: { x: 100, y: 100 } // Default spawn
+    };
+    devices.push(newDevice);
+    await db.saveDevices(devices);
+    res.json(newDevice);
+});
+
+app.put('/api/devices/:id', async (req, res) => {
+    const devices = await db.getDevices();
+    const index = devices.findIndex(d => d.id === req.params.id);
+    if (index !== -1) {
+        devices[index] = { ...devices[index], ...req.body };
+        await db.saveDevices(devices);
+        res.json(devices[index]);
+    } else {
+        res.status(404).json({ error: 'Device not found' });
+    }
+});
+
+app.delete('/api/devices/:id', async (req, res) => {
+    let devices = await db.getDevices();
+    devices = devices.filter(d => d.id !== req.params.id);
+    await db.saveDevices(devices);
+
+    // Also cleanup connections? For now keep simple
+    let connections = await db.getConnections();
+    connections = connections.filter(c => c.source !== req.params.id && c.target !== req.params.id);
+    await db.saveConnections(connections);
+
+    res.json({ success: true });
+});
+
+// Connections
+app.post('/api/connections', async (req, res) => {
+    const connections = req.body; // Expects array of edges
+    await db.saveConnections(connections);
+    res.json({ success: true });
+});
+
+app.post('/api/nodes/position', async (req, res) => {
+    // Optional: save node positions
+    const { id, position } = req.body;
+    const devices = await db.getDevices();
+    const device = devices.find(d => d.id === id);
+    if (device) {
+        device.position = position;
+        await db.saveDevices(devices);
+    }
+    res.json({ success: true });
 });
 
 const sessions = {};

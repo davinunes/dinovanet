@@ -11,6 +11,8 @@ import TerminalModal from './TerminalModal';
 import ContextMenu from './ContextMenu';
 import AssetDetails from './AssetDetails';
 
+import DeviceManager from './DeviceManager';
+
 const nodeTypes = {};
 
 function TopologyMap() {
@@ -21,9 +23,10 @@ function TopologyMap() {
     const [terminalNode, setTerminalNode] = useState(null);
     const [detailsNode, setDetailsNode] = useState(null);
     const [menu, setMenu] = useState(null);
+    const [isManagerOpen, setIsManagerOpen] = useState(false);
 
     // Fetch Topology Data
-    useEffect(() => {
+    const fetchTopology = useCallback(() => {
         fetch('/api/topology')
             .then(res => res.json())
             .then(data => {
@@ -33,8 +36,23 @@ function TopologyMap() {
             .catch(err => console.error("Failed to fetch topology:", err));
     }, [setNodes, setEdges]);
 
+    useEffect(() => {
+        fetchTopology();
+    }, [fetchTopology]);
 
-    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+
+    const onConnect = useCallback((params) => {
+        setEdges((eds) => addEdge(params, eds));
+        // Persist connection
+        // We need to act optimistic or wait. Let's send the ALL current edges + new one? 
+        // Or better, just send the new list from state after update? 
+        // React Flow setState is async. The clean way:
+        fetch('/api/connections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify([...edges, { ...params, id: `e${params.source}-${params.target}` }]) // Simple naive edge save
+        });
+    }, [edges, setEdges]); // Depend on edges to save all
 
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault(); // Prevent native browser menu
@@ -61,7 +79,17 @@ function TopologyMap() {
     const closeMenu = () => setMenu(null);
 
     return (
-        <div style={{ width: '100vw', height: '100vh' }}>
+        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+            {/* Admin Controls */}
+            <div className="absolute top-4 right-4 z-40">
+                <button
+                    onClick={() => setIsManagerOpen(true)}
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded shadow border border-gray-600 font-medium text-sm transition-colors"
+                >
+                    ⚙️ Manage Devices
+                </button>
+            </div>
+
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -99,6 +127,12 @@ function TopologyMap() {
                 isOpen={!!detailsNode}
                 onClose={closeDetails}
                 node={detailsNode}
+            />
+
+            <DeviceManager
+                isOpen={isManagerOpen}
+                onClose={() => setIsManagerOpen(false)}
+                onDevicesChanged={fetchTopology}
             />
         </div>
     );
