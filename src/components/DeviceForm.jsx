@@ -56,8 +56,7 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => 
                             placeholder="e.g. Web Server Prod"
                             required
                         />
-                        required
-                        />
+
                     </div>
 
                     <div>
