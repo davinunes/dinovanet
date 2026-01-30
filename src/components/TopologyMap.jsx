@@ -35,7 +35,9 @@ function TopologyMap() {
             .then(res => res.json())
             .then(data => {
                 setNodes(data.nodes);
-                setEdges(data.edges);
+                // Deduplicate edges based on ID to prevent React key errors
+                const uniqueEdges = Array.from(new Map(data.edges.map(e => [e.id, e])).values());
+                setEdges(uniqueEdges);
             })
             .catch(err => console.error("Failed to fetch topology:", err));
     }, [setNodes, setEdges]);
