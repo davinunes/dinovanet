@@ -79,7 +79,7 @@ function TopologyMap() {
     // Handle Node Drag Stop - Persist Position
     const onNodeDragStop = useCallback((event, node) => {
         fetch(`/api/devices/${node.id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ position: node.position })
         }).catch(err => console.error("Failed to save node position:", err));
