@@ -113,8 +113,7 @@ app.delete('/api/connections/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-res.json({ success: true });
-});
+
 
 // Groups CRUD
 app.get('/api/groups', async (req, res) => {
