@@ -13,8 +13,6 @@ import AssetDetails from './AssetDetails';
 
 import DeviceManager from './DeviceManager';
 
-
-
 function TopologyMap() {
     const nodeTypes = useMemo(() => ({}), []);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -45,22 +43,30 @@ function TopologyMap() {
     const onConnect = useCallback((params) => {
         setEdges((eds) => addEdge(params, eds));
         // Persist connection
-        // We need to act optimistic or wait. Let's send the ALL current edges + new one? 
-        // Or better, just send the new list from state after update? 
-        // React Flow setState is async. The clean way:
         fetch('/api/connections', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify([...edges, { ...params, id: `e${params.source}-${params.target}` }]) // Simple naive edge save
         });
-    }, [edges, setEdges]); // Depend on edges to save all
+    }, [edges, setEdges]);
 
     const onNodeContextMenu = useCallback((event, node) => {
         event.preventDefault(); // Prevent native browser menu
         setMenu({
             x: event.clientX,
             y: event.clientY,
+            target: 'node',
             node: node,
+        });
+    }, []);
+
+    const onPaneContextMenu = useCallback((event) => {
+        event.preventDefault();
+        setMenu({
+            x: event.clientX,
+            y: event.clientY,
+            target: 'pane',
+            node: null,
         });
     }, []);
 
@@ -72,6 +78,8 @@ function TopologyMap() {
             setTerminalNode(menu.node);
         } else if (action === 'details') {
             setDetailsNode(menu.node);
+        } else if (action === 'manage') {
+            setIsManagerOpen(true);
         }
     };
 
@@ -98,6 +106,7 @@ function TopologyMap() {
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onNodeContextMenu={onNodeContextMenu}
+                onPaneContextMenu={onPaneContextMenu}
                 onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 fitView
@@ -111,10 +120,13 @@ function TopologyMap() {
                     x={menu.x}
                     y={menu.y}
                     onClose={closeMenu}
-                    options={[
-                        { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
-                        { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
-                    ]}
+                    options={menu.target === 'pane'
+                        ? [{ label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }]
+                        : [
+                            { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
+                            { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
+                        ]
+                    }
                 />
             )}
 
@@ -122,6 +134,7 @@ function TopologyMap() {
                 isOpen={!!terminalNode}
                 onClose={closeTerminal}
                 nodeLabel={terminalNode?.data?.label || 'Unknown'}
+                device={terminalNode?.data}
             />
 
             <AssetDetails
