@@ -13,6 +13,7 @@ const WindowFrame = ({
     initialY = 50,
     children
 }) => {
+    // Initial position logic
     const [position, setPosition] = useState({ x: initialX, y: initialY });
     const [isDragging, setIsDragging] = useState(false);
     const dragOffset = useRef({ x: 0, y: 0 });
@@ -25,23 +26,22 @@ const WindowFrame = ({
         e.preventDefault(); // Prevent text selection
         onFocus(); // Bring to front
 
-        setIsDragging(true);
         const rect = windowRef.current.getBoundingClientRect();
         dragOffset.current = {
             x: e.clientX - rect.left,
             y: e.clientY - rect.top
         };
+        setIsDragging(true);
     };
 
     useEffect(() => {
         const handleMouseMove = (e) => {
             if (!isDragging) return;
 
+            e.preventDefault();
+
             const newX = e.clientX - dragOffset.current.x;
             const newY = e.clientY - dragOffset.current.y;
-
-            // Simple bounds checking (optional, keep on screen)
-            // const boundedY = Math.max(0, newY);
 
             setPosition({ x: newX, y: newY });
         };
@@ -51,6 +51,7 @@ const WindowFrame = ({
         };
 
         if (isDragging) {
+            // Attach to window to handle fast drags outside the component
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
@@ -68,7 +69,10 @@ const WindowFrame = ({
     return (
         <div
             ref={windowRef}
-            className={`absolute flex flex-col bg-gray-900 border border-gray-700 rounded shadow-2xl overflow-hidden transition-shadow duration-200 ${isActive ? 'z-50 border-blue-500 shadow-blue-500/20' : 'z-40'}`}
+            className={`absolute flex flex-col bg-gray-900 border border-gray-700 rounded shadow-2xl overflow-hidden
+                ${isDragging ? '' : 'transition-all duration-200 ease-out'} 
+                ${isActive ? 'z-[60] border-blue-500 shadow-blue-500/20' : 'z-[50]'}
+            `}
             style={{
                 ...containerStyle,
                 position: isMaximized ? 'fixed' : 'absolute',
