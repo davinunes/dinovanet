@@ -217,13 +217,18 @@ function TopologyMap() {
                         x={menu.x}
                         y={menu.y}
                         onClose={closeMenu}
-                        options={menu.target === 'pane'
-                            ? [{ label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }]
-                            : [
+                        options={
+                            menu.target === 'node' ? [
                                 { label: 'Open Terminal', action: () => handleMenuAction('terminal'), icon: '💻' },
                                 { label: 'View Details', action: () => handleMenuAction('details'), icon: 'ℹ️' },
-                            ]
-                        }
+                            ] :
+                                menu.target === 'edge' ? [
+                                    { label: 'Delete Connection', action: () => handleMenuAction('delete_edge'), icon: '🗑️' }
+                                ] :
+                                    [
+                                        { label: 'Manage Devices', action: () => handleMenuAction('manage'), icon: '⚙️' }
+                                    ]
+                        }    }
                     />
                 )}
 
