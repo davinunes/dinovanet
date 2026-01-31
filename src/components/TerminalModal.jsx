@@ -171,7 +171,6 @@ const TerminalModal = forwardRef(({ isOpen, onClose, nodeLabel, device, isEmbedd
             {content}
         </div>
     );
-    );
 });
 
 export default TerminalModal;
