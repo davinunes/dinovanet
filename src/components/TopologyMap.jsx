@@ -201,6 +201,10 @@ function TopologyMap({ topologyId, onTopologyChange }) {
     }, [topologyId]);
 
     const onNodeDoubleClick = useCallback((event, node) => {
+        console.log("Double click on node:", node);
+        console.log("Target Topology ID:", node.data?.targetTopologyId);
+        console.log("onTopologyChange function:", onTopologyChange);
+
         if (node.data.targetTopologyId && onTopologyChange) {
             console.log("Navigating to topology:", node.data.targetTopologyId);
             onTopologyChange(node.data.targetTopologyId);
