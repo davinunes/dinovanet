@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import WindowFrame from './WindowFrame';
 import TerminalModal from './TerminalModal';
 import RDPSession from './RDPSession';
 
 const WindowManager = ({ sessions, onUpdateSession, onCloseSession, onFocusSession }) => {
+    const sessionRefs = useRef({}); // Store refs to terminal instances
 
     // Sort to handle z-index visually if we mapped properly, 
     // but standard mapping order + z-index manipulation in WindowFrame style is better.
@@ -25,12 +26,14 @@ const WindowManager = ({ sessions, onUpdateSession, onCloseSession, onFocusSessi
                             onClose={() => onCloseSession(session.id)}
                             onMinimize={() => onUpdateSession(session.id, { isMinimized: true, isActive: false })}
                             onMaximizeToggle={() => onUpdateSession(session.id, { isMaximized: !session.isMaximized })}
+                            onCopy={() => sessionRefs.current[session.id]?.copyAll()}
                             initialX={session.initialX}
                             initialY={session.initialY}
                         >
                             {/* Dynamic Content based on Protocol */}
                             {(!session.device?.protocol || session.device.protocol === 'ssh') && (
                                 <TerminalModal
+                                    ref={el => sessionRefs.current[session.id] = el}
                                     isOpen={true}
                                     onClose={() => onCloseSession(session.id)}
                                     nodeLabel={session.nodeLabel}

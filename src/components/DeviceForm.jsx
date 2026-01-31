@@ -5,6 +5,7 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => 
         description: '',
         type: 'server',
         address: '',
+        port: '',
         protocol: 'ssh',
         username: '',
         password: '',
@@ -19,6 +20,7 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => 
                 description: '',
                 type: 'server',
                 address: '',
+                port: '',
                 protocol: 'ssh',
                 username: '',
                 password: '',
@@ -105,16 +107,29 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => 
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-gray-400 text-xs mb-1">IP / Hostname</label>
-                        <input
-                            name="address"
-                            value={formData.address}
-                            onChange={handleChange}
-                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
-                            placeholder="192.168.1.10"
-                            required
-                        />
+                    <div className="grid grid-cols-3 gap-2">
+                        <div className="col-span-2">
+                            <label className="block text-gray-400 text-xs mb-1">IP / Hostname</label>
+                            <input
+                                name="address"
+                                value={formData.address}
+                                onChange={handleChange}
+                                className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                                placeholder="192.168.1.10"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-gray-400 text-xs mb-1">Port</label>
+                            <input
+                                name="port"
+                                type="number"
+                                value={formData.port || ''}
+                                onChange={handleChange}
+                                className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                                placeholder="22"
+                            />
+                        </div>
                     </div>
 
                     <div className="border-t border-gray-700 pt-2 mt-2">
@@ -134,6 +149,16 @@ const DeviceForm = ({ isOpen, onClose, onSave, device = null, groups = [] }) => 
                             value={formData.password}
                             onChange={handleChange}
                             className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-sm"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-gray-400 text-xs mb-1">Private Key (RSA/PEM)</label>
+                        <textarea
+                            name="privateKey"
+                            value={formData.privateKey}
+                            onChange={handleChange}
+                            className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white text-xs font-mono h-16 resize-y"
+                            placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                         />
                     </div>
 

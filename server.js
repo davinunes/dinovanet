@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 
 import os from 'os';
+import fs from 'fs';
+import path from 'path';
 import pty from 'node-pty';
 
 const app = express();
@@ -315,16 +317,71 @@ io.on("connection", (socket) => {
             const user = device.username || 'root'; // default user
             const target = `${user}@${device.address}`;
             const cmd = 'ssh';
-            const args = ['-o', 'StrictHostKeyChecking=no', target];
+            const cols = 80;
+            const rows = 24;
 
-            console.log(`Spawning SSH for ${socket.id}: ${cmd} ${args.join(' ')}`);
+            let cmd = 'ssh';
+            let args = [];
+
+            // Security: StrictHostKeyChecking=no for dev ease
+            args.push('-o', 'StrictHostKeyChecking=no');
+            args.push('-o', 'UserKnownHostsFile=/dev/null');
+            args.push('-o', 'LogLevel=ERROR'); // Reduce noise
+
+            // Custom Port
+            if (device.port) {
+                args.push('-p', String(device.port));
+            }
+
+            // Private Key Handling
+            let keyPath = null;
+            if (device.privateKey && device.privateKey.trim().length > 0) {
+                // Generate temp file path
+                keyPath = path.join(os.tmpdir(), `ssh_key_${socket.id}_${Date.now()}`);
+                try {
+                    // Write key with 600 permissions (Owner Read/Write only)
+                    fs.writeFileSync(keyPath, device.privateKey, { mode: 0o600 });
+                    args.push('-i', keyPath);
+                    // Identify this key only?
+                    args.push('-o', 'IdentitiesOnly=yes');
+                } catch (err) {
+                    console.error("Failed to write private key file:", err);
+                    socket.emit('term.data', '\r\nError: Failed to process private key.\r\n');
+                }
+            }
+
+            // IPv6 Handling
+            if (device.address.includes(':')) {
+                args.push('-6');
+            }
+
+            // Destination
+            if (device.username) {
+                args.push(`${device.username}@${device.address}`);
+            } else {
+                args.push(device.address);
+            }
+
+            console.log(`Spawning: ${cmd} ${args.join(' ')}`);
 
             ptyProcess = pty.spawn(cmd, args, {
                 name: 'xterm-color',
-                cols: 80,
-                rows: 24,
+                cols: cols,
+                rows: rows,
                 cwd: process.env.HOME || process.cwd(),
                 env: process.env
+            });
+
+            // Store process
+            sessions[socket.id] = ptyProcess;
+
+            // Cleanup Key on Exit
+            ptyProcess.on('exit', (code) => {
+                if (keyPath && fs.existsSync(keyPath)) {
+                    try { fs.unlinkSync(keyPath); } catch (e) { console.error("Key cleanup failed", e); }
+                }
+                console.log(`PTY exited with code ${code}`);
+                // socket.emit('term.exit', code); // Optional: close from frontend
             });
 
         } else {

@@ -9,6 +9,7 @@ const WindowFrame = ({
     onMaximizeToggle,
     isActive,
     onFocus,
+    onCopy,
     initialX = 50,
     initialY = 50,
     children
@@ -108,6 +109,15 @@ const WindowFrame = ({
                     <span className="text-white font-mono text-sm truncate max-w-[200px]">{title}</span>
                 </div>
                 <div className="flex items-center gap-2" onMouseDown={e => e.stopPropagation()}>
+                    {onCopy && (
+                        <button
+                            onClick={onCopy}
+                            className="text-gray-400 hover:text-white px-2 hover:bg-gray-700 rounded"
+                            title="Copy All Content"
+                        >
+                            📋
+                        </button>
+                    )}
                     <button onClick={onMinimize} className="text-gray-400 hover:text-white px-2 hover:bg-gray-700 rounded">─</button>
                     <button onClick={onMaximizeToggle} className="text-gray-400 hover:text-white px-2 hover:bg-gray-700 rounded">
                         {isMaximized ? '❐' : '□'}

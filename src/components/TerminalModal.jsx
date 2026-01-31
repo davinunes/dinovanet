@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -10,12 +10,29 @@ const socket = io({
     transports: ["websocket", "polling"],
 });
 
-const TerminalModal = ({ isOpen, onClose, nodeLabel, device, isEmbedded = false }) => {
+const TerminalModal = forwardRef(({ isOpen, onClose, nodeLabel, device, isEmbedded = false }, ref) => {
     const terminalRef = useRef(null);
     const socketRef = useRef(null);
     const termRef = useRef(null);
     const fitAddonRef = useRef(null);
     const [isMaximized, setIsMaximized] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+        copyAll: () => {
+            if (termRef.current) {
+                termRef.current.selectAll();
+                const selection = termRef.current.getSelection();
+                if (selection) {
+                    navigator.clipboard.writeText(selection)
+                        .then(() => {
+                            console.log("Terminal content copied to clipboard");
+                            termRef.current.clearSelection(); // Optional: clear selection after copy
+                        })
+                        .catch(err => console.error("Failed to copy", err));
+                }
+            }
+        }
+    }));
 
     useEffect(() => {
         if (!isOpen) return;
@@ -154,6 +171,7 @@ const TerminalModal = ({ isOpen, onClose, nodeLabel, device, isEmbedded = false 
             {content}
         </div>
     );
-};
+    );
+});
 
 export default TerminalModal;
