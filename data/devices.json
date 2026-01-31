@@ -1,0 +1,35 @@
+[
+  {
+    "id": "9c1d7fc2-ee60-417a-96f5-f8d10430f5c1",
+    "description": "M2 NE20",
+    "type": "router",
+    "address": "45.188.183.185",
+    "protocol": "ssh",
+    "username": "layer7",
+    "password": "sdbYVS%SD15869",
+    "privateKey": "",
+    "groupId": "df06cbb7-e18c-4a58-a32e-734b8225d553"
+  },
+  {
+    "id": "252c8718-1600-4109-85f6-3ad3b4431060",
+    "description": "Teste 2",
+    "type": "router",
+    "address": "45.188.183.185",
+    "protocol": "ssh",
+    "username": "layer7",
+    "password": "sdbYVS%SD15869",
+    "privateKey": "",
+    "groupId": "df06cbb7-e18c-4a58-a32e-734b8225d553"
+  },
+  {
+    "id": "efdc8f97-5d1d-413b-aaa6-5071f73b146b",
+    "description": "Igri",
+    "type": "pc",
+    "address": "45.239.228.166",
+    "protocol": "rdp",
+    "username": "layer7",
+    "password": "e0FvIisKq!D*",
+    "privateKey": "",
+    "groupId": "620b8be0-b8cf-4128-af9d-61a0c0b7344f"
+  }
+]
