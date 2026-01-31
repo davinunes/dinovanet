@@ -1,0 +1,14 @@
+[
+  {
+    "type": "smoothstep",
+    "style": {
+      "strokeWidth": 2,
+      "stroke": "#555"
+    },
+    "source": "9c1d7fc2-ee60-417a-96f5-f8d10430f5c1",
+    "sourceHandle": null,
+    "target": "252c8718-1600-4109-85f6-3ad3b4431060",
+    "targetHandle": null,
+    "id": "e9c1d7fc2-ee60-417a-96f5-f8d10430f5c1-252c8718-1600-4109-85f6-3ad3b4431060"
+  }
+]

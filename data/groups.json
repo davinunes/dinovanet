@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "id": "620b8be0-b8cf-4128-af9d-61a0c0b7344f",
+    "name": "Igri",
+    "description": ""
+  },
+  {
+    "id": "b3900284-c941-4013-b2ff-5e470d185320",
+    "name": "Layer7",
+    "description": ""
+  },
+  {
+    "id": "69752f43-9eb7-433b-b6df-8a2beca408af",
+    "name": "Acesso.com",
+    "description": ""
+  },
+  {
+    "id": "df06cbb7-e18c-4a58-a32e-734b8225d553",
+    "name": "M2 Internet",
+    "description": ""
+  },
+  {
+    "id": "e0aa6b0e-b5cd-47c8-b819-083d59b007f8",
+    "name": "M2 Internet",
+    "description": ""
+  }
+]
