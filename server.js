@@ -314,9 +314,7 @@ io.on("connection", (socket) => {
             // SSH CONNECTION
             // Warning: StrictHostKeyChecking=no is used for convenience in this MVP.
             // In production, we should handle host keys properly.
-            const user = device.username || 'root'; // default user
-            const target = `${user}@${device.address}`;
-            const cmd = 'ssh';
+
             const cols = 80;
             const rows = 24;
 
