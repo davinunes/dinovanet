@@ -83,6 +83,29 @@ app.get('/api/topology', async (req, res) => {
     }
 });
 
+// Add Node to Topology
+app.post('/api/topology/:id/nodes', async (req, res) => {
+    const topologyId = req.params.id === 'default' ? (await db.getTopologies())[0]?.id : req.params.id;
+    const newNode = req.body;
+
+    const topologies = await db.getTopologies();
+    const topology = topologies.find(t => t.id === topologyId);
+
+    if (topology) {
+        // Check if exists
+        const existingIdx = topology.nodes.findIndex(n => n.id === newNode.id);
+        if (existingIdx !== -1) {
+            topology.nodes[existingIdx] = newNode; // Update/Move
+        } else {
+            topology.nodes.push(newNode); // Add
+        }
+        await db.saveTopologies(topologies);
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'Topology not found' });
+    }
+});
+
 // Devices CRUD
 app.get('/api/devices', async (req, res) => {
     const devices = await db.getDevices();

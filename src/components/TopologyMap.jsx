@@ -82,6 +82,102 @@ function TopologyMap({ topologyId }) {
     }, [setEdges]);
 
     // Handle Node Drag Stop - Persist Position
+    const onDragOver = useCallback((event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
+
+    const onDrop = useCallback(
+        (event) => {
+            event.preventDefault();
+
+            const type = event.dataTransfer.getData('application/reactflow');
+            const dataStr = event.dataTransfer.getData('application/json');
+
+            // check if the dropped element is valid
+            if (typeof type === 'undefined' || !type || !dataStr) {
+                return;
+            }
+
+            const deviceData = JSON.parse(dataStr);
+            console.log("Dropped device:", deviceData);
+
+            // Get React Flow Bounds
+            const reactFlowBounds = containerRef.current.getBoundingClientRect();
+
+            // Calculate Position
+            // Note: In a real app we need project({x,y}) from useReactFlow, 
+            // but we can't use it easily without wrapping headers. 
+            // Simple offset approximation:
+            const position = {
+                x: event.clientX - reactFlowBounds.left - 75, // center offset
+                y: event.clientY - reactFlowBounds.top - 25,
+            };
+
+            const newNode = {
+                id: deviceData.id, // Use device ID as Node ID? 
+                // Problem: Can a device appear twice? 
+                // For now, yes, let's allow 1:1 map.
+                // If we want multiple instances of same device, we need unique Node ID.
+                // Let's use DeviceID for now to keep things simple with existing logic.
+                type: type === 'device' ? 'default' : type, // ReactFlow default type or custom
+                position,
+                data: { ...deviceData, label: deviceData.description || deviceData.ip },
+                style: {
+                    background: deviceData.type === 'cloud' ? '#6ede87' : '#fff',
+                    color: '#333',
+                    border: '1px solid #777',
+                    padding: '10px',
+                    borderRadius: '5px',
+                    width: 150
+                }
+            };
+
+            setNodes((nds) => {
+                // Check if node already exists? If so, maybe just move it?
+                // OR allow dups with different ID? 
+                // Let's prevent duplicates for now to avoid confusion.
+                if (nds.find(n => n.id === newNode.id)) {
+                    // Update position of existing
+                    return nds.map(n => n.id === newNode.id ? { ...n, position } : n);
+                }
+                return nds.concat(newNode);
+            });
+
+            // Persist the change!
+            // We need to save the node addition.
+            // Since we don't have a "onNodeAdd" callback, we do it here.
+            // But `setNodes` is async.
+            // Construct the new list for saving.
+            // Wait, we need the CURRENT nodes. `setNodes` callback gives us that but doesn't let us side-effect easily.
+            // Better to trigger a save after nodes change? 
+            // Let's manually trigger save API here with the new node added to current list?
+            // No, `nodes` state might be stale inside callback.
+
+            // Easy fix: Just call the API to "Add/Update Node in Topology"
+            // The backend `PUT /api/devices/:id` updates position but assumes node exists in topology?
+            // Let's use a specific endpoint or update our PUT logic.
+            // Actually, `PUT /api/devices/:id` logic in server.js updates the node in *active topologies* (plural).
+            // It doesn't ADD it if missing.
+
+            // We need `POST /api/topology/:id/nodes`
+            // Let's try to fetch the current topology, add node, and save back? 
+
+            // For MVP: Just fetch backend to add it.
+            fetch(`/api/topology/${topologyId || 'default'}/nodes`, { // We need this endpoint!
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newNode)
+            }).then(() => {
+                // fetchTopology(); // Refresh to be sure? Or trust local state.
+            });
+
+        },
+        [topologyId, setNodes]
+    );
+
+    // --- End Drop Handlers ---
+
     const onNodeDragStop = useCallback((event, node) => {
         fetch(`/api/devices/${node.id}`, {
             method: 'PUT',
@@ -223,16 +319,18 @@ function TopologyMap({ topologyId }) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onNodeDragStop={onNodeDragStop}
+                onPaneClick={onPaneClick}
                 onNodeContextMenu={onNodeContextMenu}
                 onEdgeContextMenu={onEdgeContextMenu}
-                onNodeDragStop={onNodeDragStop}
                 onPaneContextMenu={onPaneContextMenu}
-                onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
                 defaultEdgeOptions={defaultEdgeOptions}
                 fitView
+                onDragOver={onDragOver}
+                onDrop={onDrop}
             >
-                <Background />
+                <Background color="#222" gap={16} />
                 <Controls />
             </ReactFlow>
 

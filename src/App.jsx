@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import TopologyMap from './components/TopologyMap';
 import TopologySelector from './components/TopologySelector';
+import TopologySidebar from './components/TopologySidebar';
 import './App.css';
 
 function App() {
@@ -25,8 +26,11 @@ function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 relative">
-        <TopologyMap topologyId={currentTopologyId} />
+      <div className="flex-1 flex overflow-hidden">
+        <TopologySidebar />
+        <div className="flex-1 relative">
+          <TopologyMap topologyId={currentTopologyId} />
+        </div>
       </div>
     </div>
   );
