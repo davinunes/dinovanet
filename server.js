@@ -125,69 +125,71 @@ app.post('/api/devices', async (req, res) => {
 });
 
 app.put('/api/devices/:id', async (req, res) => {
-    const { id } = req.params;
+    try {
+        const { id } = req.params;
 
-    // 1. Handle Position Update (belongs to Topology)
-    if (req.body.position) {
-        const topologies = await db.getTopologies();
-        const targetTopologyId = req.body.topologyId;
-        let updated = false;
+        // 1. Handle Position Update (belongs to Topology)
+        if (req.body.position) {
+            const topologies = await db.getTopologies();
+            const targetTopologyId = req.body.topologyId;
+            let updated = false;
 
-        if (targetTopologyId) {
-            // Update ONLY in the specific topology
-            const t = topologies.find(topo => topo.id === targetTopologyId || (targetTopologyId === 'default' && topo.id === topologies[0].id));
-            if (t) {
-                const nodeIndex = t.nodes.findIndex(n => n.id === id);
-                if (nodeIndex !== -1) {
-                    t.nodes[nodeIndex].position = req.body.position;
-                    updated = true;
+            if (targetTopologyId) {
+                // Update ONLY in the specific topology
+                const t = topologies.find(topo => topo.id === targetTopologyId || (targetTopologyId === 'default' && topo.id === topologies[0].id));
+                if (t) {
+                    const nodeIndex = t.nodes.findIndex(n => n.id === id);
+                    if (nodeIndex !== -1) {
+                        t.nodes[nodeIndex].position = req.body.position;
+                        updated = true;
+                    }
+                }
+            } else {
+                // Fallback: Update in ALL topologies (Legacy behavior)
+                for (const t of topologies) {
+                    const nodeIndex = t.nodes.findIndex(n => n.id === id);
+                    if (nodeIndex !== -1) {
+                        t.nodes[nodeIndex].position = req.body.position;
+                        updated = true;
+                    }
                 }
             }
+
+            if (updated) {
+                await db.saveTopologies(topologies);
+                return res.json({ success: true, message: "Position updated in topology" });
+            }
+        }
+
+        // 2. Handle Inventory Update (Description, IP, etc)
+        // If it's a shortcut node (link-...), it won't be in devices.json, so this is expected 404 if not a position update.
+        // But if it WAS a position update but failed to find the node in topology (sync issue?), we shouldn't fail hard.
+
+        const devices = await db.getDevices();
+        const index = devices.findIndex(d => d.id === id);
+
+        if (index !== -1) {
+            devices[index] = { ...devices[index], ...req.body };
+            // Remove special fields that don't belong in device data
+            delete devices[index].position;
+            delete devices[index].topologyId;
+
+            await db.saveDevices(devices);
+
+            // Also update cache in topologies if label/data changed? 
+            // For now, simpler to just return. The frontend hydrates on reload.
+            // But if we want instant update in other maps... complex.
+
+            res.json(devices[index]);
         } else {
-            // Fallback: Update in ALL topologies (Legacy behavior)
-            for (const t of topologies) {
-                const nodeIndex = t.nodes.findIndex(n => n.id === id);
-                if (nodeIndex !== -1) {
-                    t.nodes[nodeIndex].position = req.body.position;
-                    updated = true;
-                }
-            }
+            // It might be a Shortcut Node (which is not in devices.json).
+            // If we are here, it means we failed to update its position (Step 1) AND it's not in inventory.
+            console.log(`Device/Node not found for update: ${id}`);
+            res.status(404).json({ error: 'Device not found' });
         }
-
-        if (updated) {
-            await db.saveTopologies(topologies);
-            return res.json({ success: true, message: "Position updated in topology" });
-        }
-    }
-
-    // 2. Handle Inventory Update (Description, IP, etc)
-    const devices = await db.getDevices();
-    const index = devices.findIndex(d => d.id === id);
-    if (index !== -1) {
-        devices[index] = { ...devices[index], ...req.body };
-        // Remove position if it accidentally got sent to inventory
-        delete devices[index].position;
-
-        await db.saveDevices(devices);
-
-        // Also update the snapshot in topologies? 
-        // Ideally yes, but for MVP we rely on "Data" being in the node.
-        // Let's do a quick sync to active topologies
-        const topologies = await db.getTopologies();
-        let topoChanged = false;
-        topologies.forEach(t => {
-            t.nodes.forEach(n => {
-                if (n.deviceId === id || n.id === id) {
-                    n.data = { ...n.data, ...req.body };
-                    topoChanged = true;
-                }
-            });
-        });
-        if (topoChanged) await db.saveTopologies(topologies);
-
-        res.json(devices[index]);
-    } else {
-        res.status(404).json({ error: 'Device not found' });
+    } catch (err) {
+        console.error("Error in PUT /api/devices/:id:", err);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
