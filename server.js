@@ -28,7 +28,6 @@ app.use(express.json());
 app.get('/api/topology', async (req, res) => {
     try {
         const topologies = await db.getTopologies();
-        // We also need the inventory to hydrate the nodes with fresh data (labels, status, etc.)
         const devices = await db.getDevices();
 
         let topology;
@@ -43,43 +42,55 @@ app.get('/api/topology', async (req, res) => {
         }
 
         if (!topology) {
-            return res.json({ nodes: [], edges: [] });
+            // No topologies at all
+            return res.json({ id: 'default', name: 'Default', nodes: [], edges: [] });
         }
+
+        // Defensive check: Ensure nodes array exists
+        if (!topology.nodes) topology.nodes = [];
 
         // Hydrate nodes with latest device info
         const hydratedNodes = topology.nodes.map(n => {
-            const device = devices.find(d => d.id === n.deviceId || d.id === n.id);
+            if (!n) return null;
+            // Strategy: Use deviceId if available, else id (for legacy/shortcuts)
+            const deviceId = n.deviceId || n.id;
+            const device = devices.find(d => d.id === deviceId);
+
             if (device) {
                 return {
                     ...n,
                     data: {
                         ...n.data,
                         ...device,
-                        label: device.description || device.ip
+                        // Priority: Label from Node (override) -> Device Description -> Device IP
+                        label: n.data?.label || device.description || device.ip
                     },
                     style: {
+                        // Priority: Style from Node (override) -> Default Style
                         background: device.type === 'cloud' ? '#6ede87' : '#fff',
                         color: '#333',
                         border: '1px solid #777',
                         padding: '10px',
                         borderRadius: '5px',
                         width: 150,
-                        ...n.style // Allow overriding style if needed
+                        ...n.style
                     }
                 };
             }
-            return n; // device might have been deleted? Return as is or filter out.
-        });
+            // If device not found (maybe deleted, or it's a shortcut node which is standalone)
+            return n;
+        }).filter(n => n !== null);
 
         res.json({
-            id: topology.id, // Send ID so frontend knows which one it is
+            id: topology.id,
             name: topology.name,
             nodes: hydratedNodes,
-            edges: topology.edges
+            edges: topology.edges || []
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Failed to load topology' });
+        console.error("Error in GET /api/topology:", err);
+        // Return empty valid topology to prevent frontend crash loop
+        res.json({ id: 'error', name: 'Error Loading', nodes: [], edges: [] });
     }
 });
 
