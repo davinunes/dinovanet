@@ -7,9 +7,10 @@ services:
     working_dir: /app
     volumes:
       - /root/dinovanet:/app
-    ports:
-      - "5173:5173"  # Vite Frontend
-      - "3000:3000"  # Node Backend API / WebSockets
+    network_mode: host
+    # ports: (Host mode uses host ports directly)
+    #   - "5173:5173"
+    #   - "3000:3000"
     command: sh -c "npm install && npm run dev"
     environment:
       - NODE_ENV=development

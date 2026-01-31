@@ -87,29 +87,40 @@ const TerminalModal = forwardRef(({ isOpen, onClose, nodeLabel, device, isEmbedd
             socket.emit('term.input', data);
         });
 
-        // Handle resize
-        const handleResize = () => {
-            // Wait for transition if maximizing
-            setTimeout(() => {
-                if (term.element) {
-                    fitAddon.fit();
-                    if (term.cols && term.rows) {
-                        socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+        // Handle resize via ResizeObserver
+        const resizeObserver = new ResizeObserver(() => {
+            // Debounce slightly to ensure layout is done
+            if (requestAnimationFrame) {
+                requestAnimationFrame(() => {
+                    if (term.element && fitAddon) {
+                        try {
+                            fitAddon.fit();
+                            if (term.cols && term.rows) {
+                                socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+                            }
+                        } catch (e) {
+                            console.error("Fit error:", e);
+                        }
                     }
-                }
-            }, 50);
-        };
+                });
+            }
+        });
 
-        window.addEventListener('resize', handleResize);
+        if (terminalRef.current) {
+            resizeObserver.observe(terminalRef.current);
+        }
 
-        // Initial resize to sync server
-        setTimeout(handleResize, 100);
+        // Initial fit
+        setTimeout(() => {
+            fitAddon.fit();
+            socket.emit('term.resize', { cols: term.cols, rows: term.rows });
+        }, 100);
 
         return () => {
             // Cleanup
             term.dispose();
             socket.off('term.data', handleData);
-            window.removeEventListener('resize', handleResize);
+            resizeObserver.disconnect();
         };
     }, [isOpen]);
 
