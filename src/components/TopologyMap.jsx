@@ -182,9 +182,12 @@ function TopologyMap({ topologyId }) {
         fetch(`/api/devices/${node.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ position: node.position })
+            body: JSON.stringify({
+                position: node.position,
+                topologyId: topologyId || 'default' // Pass context
+            })
         }).catch(err => console.error("Failed to save node position:", err));
-    }, []);
+    }, [topologyId]);
 
     // Helper to get coordinates relative to the main container
     const getRelativeCoords = (event) => {

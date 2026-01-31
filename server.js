@@ -130,23 +130,34 @@ app.put('/api/devices/:id', async (req, res) => {
     // 1. Handle Position Update (belongs to Topology)
     if (req.body.position) {
         const topologies = await db.getTopologies();
+        const targetTopologyId = req.body.topologyId;
         let updated = false;
 
-        // Naive: Update this node in ALL topologies it exists in 
-        // (In future: Frontend should pass topologyId context)
-        for (const t of topologies) {
-            const nodeIndex = t.nodes.findIndex(n => n.id === id);
-            if (nodeIndex !== -1) {
-                t.nodes[nodeIndex].position = req.body.position;
-                updated = true;
+        if (targetTopologyId) {
+            // Update ONLY in the specific topology
+            const t = topologies.find(topo => topo.id === targetTopologyId || (targetTopologyId === 'default' && topo.id === topologies[0].id));
+            if (t) {
+                const nodeIndex = t.nodes.findIndex(n => n.id === id);
+                if (nodeIndex !== -1) {
+                    t.nodes[nodeIndex].position = req.body.position;
+                    updated = true;
+                }
+            }
+        } else {
+            // Fallback: Update in ALL topologies (Legacy behavior)
+            for (const t of topologies) {
+                const nodeIndex = t.nodes.findIndex(n => n.id === id);
+                if (nodeIndex !== -1) {
+                    t.nodes[nodeIndex].position = req.body.position;
+                    updated = true;
+                }
             }
         }
 
         if (updated) {
             await db.saveTopologies(topologies);
-            return res.json({ success: true, message: "Position updated in topologies" });
+            return res.json({ success: true, message: "Position updated in topology" });
         }
-        // If not found in topology, fallthrough to check inventory (unlikely for coords)
     }
 
     // 2. Handle Inventory Update (Description, IP, etc)
