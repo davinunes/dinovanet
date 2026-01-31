@@ -29,7 +29,10 @@ function App() {
       <div className="flex-1 flex overflow-hidden">
         <TopologySidebar />
         <div className="flex-1 relative">
-          <TopologyMap topologyId={currentTopologyId} />
+          <TopologyMap
+            topologyId={currentTopologyId}
+            onTopologyChange={setCurrentTopologyId}
+          />
         </div>
       </div>
     </div>

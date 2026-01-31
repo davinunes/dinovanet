@@ -16,7 +16,7 @@ import WindowManager from './WindowManager';
 const nodeTypes = {}; // Define outside to avoid recreation warning
 const defaultEdgeOptions = { type: 'smoothstep', style: { strokeWidth: 2, stroke: '#b1b1b7' } };
 
-function TopologyMap({ topologyId }) {
+function TopologyMap({ topologyId, onTopologyChange }) {
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const containerRef = useRef(null);
@@ -115,15 +115,26 @@ function TopologyMap({ topologyId }) {
             };
 
             const newNode = {
-                id: deviceData.id, // Use device ID as Node ID? 
-                // Problem: Can a device appear twice? 
-                // For now, yes, let's allow 1:1 map.
-                // If we want multiple instances of same device, we need unique Node ID.
-                // Let's use DeviceID for now to keep things simple with existing logic.
-                type: type === 'device' ? 'default' : type, // ReactFlow default type or custom
+                id: deviceData.id,
+                // Using ID strategy:
+                // For devices: DeviceID.
+                // For shortcuts: `link-TOPOLOGYID`.
+                // Note: This prevents multiple links to SAME topology on one map. 
+                // If user wants multiple instances of same device, we need `link-TOPOLOGYID-RANDOM`?
+                // For now, unique ID is simpler.
+                type: 'default', // Using default for now, can custom later.
                 position,
-                data: { ...deviceData, label: deviceData.description || deviceData.ip },
-                style: {
+                data: { ...deviceData, label: deviceData.label || deviceData.description || deviceData.ip },
+                style: type === 'shortcut' ? {
+                    background: '#2d2d30', // Darker
+                    color: '#a78bfa', // Purple text
+                    border: '1px solid #8b5cf6', // Purple border
+                    padding: '10px',
+                    borderRadius: '5px',
+                    width: 150,
+                    fontWeight: 'bold',
+                    boxShadow: '0 0 10px rgba(139, 92, 246, 0.3)'
+                } : {
                     background: deviceData.type === 'cloud' ? '#6ede87' : '#fff',
                     color: '#333',
                     border: '1px solid #777',
@@ -188,6 +199,13 @@ function TopologyMap({ topologyId }) {
             })
         }).catch(err => console.error("Failed to save node position:", err));
     }, [topologyId]);
+
+    const onNodeDoubleClick = useCallback((event, node) => {
+        if (node.data.targetTopologyId && onTopologyChange) {
+            console.log("Navigating to topology:", node.data.targetTopologyId);
+            onTopologyChange(node.data.targetTopologyId);
+        }
+    }, [onTopologyChange]);
 
     // Helper to get coordinates relative to the main container
     const getRelativeCoords = (event) => {

@@ -3,15 +3,18 @@ import React, { useState, useEffect } from 'react';
 const TopologySidebar = () => {
     const [devices, setDevices] = useState([]);
     const [groups, setGroups] = useState([]);
+    const [topologies, setTopologies] = useState([]); // New state
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         Promise.all([
             fetch('/api/devices').then(res => res.json()),
-            fetch('/api/groups').then(res => res.json())
-        ]).then(([devicesData, groupsData]) => {
+            fetch('/api/groups').then(res => res.json()),
+            fetch('/api/topologies').then(res => res.json()) // Fetch topologies
+        ]).then(([devicesData, groupsData, topologiesData]) => {
             setDevices(devicesData);
             setGroups(groupsData);
+            setTopologies(topologiesData);
         });
     }, []);
 
@@ -60,16 +63,32 @@ const TopologySidebar = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-4">
-                {/* Standard Nodes (Generic) - Optional if we want generic drag */}
-                {/* 
+                {/* Maps / Shortcuts Section */}
                 <div className="mb-4">
-                    <div className="text-xs font-semibold text-gray-500 mb-2">Shapes</div>
-                    <div className="dndnode input bg-white text-black p-2 rounded mb-2 cursor-grab" onDragStart={(event) => onDragStart(event, 'default', { label: 'New Node' })} draggable>
-                        Generic Node
+                    <div className="text-xs font-bold text-blue-400 mb-2 uppercase flex items-center gap-2">
+                        Maps (Shortcuts)
                     </div>
-                </div> 
-                */}
+                    <div className="space-y-2 pl-2 border-l border-gray-800">
+                        {topologies.map(t => (
+                            <div
+                                key={t.id}
+                                className="bg-gray-800 hover:bg-gray-700 p-2 rounded cursor-grab border border-gray-700 hover:border-purple-500 transition-colors text-sm flex items-center gap-2"
+                                onDragStart={(event) => onDragStart(event, 'shortcut', {
+                                    id: `link-${t.id}`, // Unique ID based on topology
+                                    label: t.name,
+                                    targetTopologyId: t.id,
+                                    type: 'shortcut'
+                                })}
+                                draggable
+                            >
+                                <span className="text-purple-400">🔗</span>
+                                <span className="font-medium text-gray-200">{t.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
+                {/* Groups Section */}
                 {filteredGroups.map(groupId => (
                     <div key={groupId}>
                         <div className="text-xs font-bold text-blue-400 mb-2 uppercase flex items-center gap-2">
