@@ -31,7 +31,8 @@ app.use(express.json());
 
 // Auth Middleware
 const authMiddleware = (req, res, next) => {
-    if (req.path === '/api/login') return next();
+    // Since this middleware is mounted at '/api', req.path is relative to that (e.g. '/login')
+    if (req.path === '/login') return next();
 
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
