@@ -22,7 +22,40 @@ app.use(express.json());
 import { db } from './server_db.js';
 import { v4 as uuidv4 } from 'uuid'; // User needs this, I will add to package.json check later or use random string
 
+import jwt from 'jsonwebtoken';
+
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
 app.use(express.json());
+
+// Auth Middleware
+const authMiddleware = (req, res, next) => {
+    if (req.path === '/api/login') return next();
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+app.use('/api', authMiddleware); // Apply to all /api routes
+
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token });
+    } else {
+        res.status(401).json({ error: 'Invalid password' });
+    }
+});
 
 // --- API Endpoints ---
 
