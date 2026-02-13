@@ -49,6 +49,13 @@ app.use('/api', authMiddleware); // Apply to all /api routes
 
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
+    console.log('Login attempt:', {
+        receivedPassword: password,
+        expectedPassword: ADMIN_PASSWORD, // Be careful in prod, ok for dev debug
+        match: password === ADMIN_PASSWORD,
+        body: req.body
+    });
+
     if (password === ADMIN_PASSWORD) {
         const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
         res.json({ token });
