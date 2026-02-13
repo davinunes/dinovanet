@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TopologyMap from './components/TopologyMap';
 import TopologySelector from './components/TopologySelector';
 import TopologySidebar from './components/TopologySidebar';
