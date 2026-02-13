@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import TopologyMap from './components/TopologyMap';
 import TopologySelector from './components/TopologySelector';
 import TopologySidebar from './components/TopologySidebar';
@@ -15,7 +15,8 @@ function App() {
   // Actually, the plan said "Update API calls".
   // A simple way to ensure all components use the token is to override global fetch or use a context.
   // Let's use a global fetch override for simplicity in this legacy-style app.
-  useEffect(() => {
+  // useLayoutEffect ensures this runs before children's useEffect (where data fetching happens)
+  useLayoutEffect(() => {
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
       let [resource, config] = args;
